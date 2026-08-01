@@ -41,6 +41,7 @@ function cacheEls() {
   els.quoteAuthorInput = document.getElementById("quoteAuthorInput");
   els.addQuoteBtn = document.getElementById("addQuoteBtn");
   els.quoteList = document.getElementById("quoteList");
+  els.statsDashboard = document.getElementById("statsDashboard");
   els.topPerformanceList = document.getElementById("topPerformanceList");
   els.dynamicsChart = document.getElementById("dynamicsChart");
   els.tableHeadRow = document.getElementById("tableHeadRow");
@@ -50,9 +51,6 @@ function cacheEls() {
 }
 
 // ---------- date helpers ----------
-function monthKey() {
-  return `${state.year}-${String(state.monthIndex + 1).padStart(2, "0")}`;
-}
 function daysInMonth() {
   return new Date(state.year, state.monthIndex + 1, 0).getDate();
 }
@@ -64,6 +62,9 @@ function weekChunks() {
   const weeks = [];
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
   return weeks;
+}
+function dateStrFor(day) {
+  return `${state.year}-${String(state.monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 function dayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 0);
@@ -83,7 +84,7 @@ function populateMonthSelect() {
 
 // ---------- data loading ----------
 async function loadHabits() {
-  state.habits = await window.api.habits.list(monthKey());
+  state.habits = await window.api.habits.list(state.year, state.monthIndex + 1);
 }
 async function loadQuotes() {
   state.quotes = await window.api.quotes.list();
@@ -138,7 +139,39 @@ function computeStats() {
 
   const topPerformance = [...named].sort((a, b) => b.pct - a.pct).slice(0, 5);
 
-  return { perHabit, dailyTotals, monthlyDynamics, weeklyBreakdown, topPerformance };
+  const totalCheckIns = dailyTotals.reduce((a, b) => a + b, 0);
+  const habitsOnTrack = named.filter((h) => h.goal > 0 && h.done >= h.goal).length;
+  const totalDone = named.reduce((acc, h) => acc + h.done, 0);
+  const totalGoal = named.reduce((acc, h) => acc + h.goal, 0);
+  const overallPct = totalGoal > 0 ? Math.round((totalDone / totalGoal) * 100) : 0;
+
+  let longestCurrent = null;
+  let longestBest = null;
+  named.forEach((h) => {
+    if (!longestCurrent || h.currentStreak > longestCurrent.value) {
+      longestCurrent = { name: h.name, value: h.currentStreak };
+    }
+    if (!longestBest || h.bestStreak > longestBest.value) {
+      longestBest = { name: h.name, value: h.bestStreak };
+    }
+  });
+
+  let bestDay = null;
+  dailyTotals.forEach((t, i) => {
+    if (!bestDay || t > bestDay.total) bestDay = { day: days[i], total: t };
+  });
+
+  const dashboard = {
+    overallPct,
+    habitsOnTrack,
+    totalHabits: named.length,
+    totalCheckIns,
+    longestCurrent,
+    longestBest,
+    bestDay,
+  };
+
+  return { perHabit, dailyTotals, monthlyDynamics, weeklyBreakdown, topPerformance, dashboard };
 }
 
 function barClass(pct) {
@@ -159,6 +192,7 @@ function renderAll() {
   renderQuoteBanner();
   renderQuoteList();
   const stats = computeStats();
+  renderStatsDashboard(stats.dashboard);
   renderTopPerformance(stats.topPerformance);
   renderDynamicsChart(stats.monthlyDynamics);
   renderHabitTable(stats.perHabit, stats.dailyTotals);
@@ -209,6 +243,41 @@ function renderQuoteList() {
     li.appendChild(removeBtn);
 
     els.quoteList.appendChild(li);
+  });
+}
+
+function renderStatsDashboard(d) {
+  const tiles = [
+    { label: "Monthly Completion", value: `${d.overallPct}%` },
+    { label: "Habits On Track", value: `${d.habitsOnTrack}/${d.totalHabits}` },
+    { label: "Total Check-ins", value: `${d.totalCheckIns}` },
+    {
+      label: "Longest Active Streak",
+      value: d.longestCurrent && d.longestCurrent.value > 0 ? `${d.longestCurrent.value}d` : "—",
+      sub: d.longestCurrent && d.longestCurrent.value > 0 ? d.longestCurrent.name : null,
+    },
+    {
+      label: "Longest Streak Ever",
+      value: d.longestBest && d.longestBest.value > 0 ? `${d.longestBest.value}d` : "—",
+      sub: d.longestBest && d.longestBest.value > 0 ? d.longestBest.name : null,
+    },
+    {
+      label: "Best Day",
+      value: d.bestDay ? `Day ${d.bestDay.day}` : "—",
+      sub: d.bestDay ? `${d.bestDay.total} done` : null,
+    },
+  ];
+
+  els.statsDashboard.innerHTML = "";
+  tiles.forEach((t) => {
+    const div = document.createElement("div");
+    div.className = "card stat-tile";
+    div.innerHTML = `
+      <div class="stat-value">${escapeHtml(t.value)}</div>
+      <div class="stat-label">${escapeHtml(t.label)}</div>
+      ${t.sub ? `<div class="stat-sub">${escapeHtml(t.sub)}</div>` : ""}
+    `;
+    els.statsDashboard.appendChild(div);
   });
 }
 
@@ -293,12 +362,12 @@ function renderDynamicsChart(data) {
 
 function renderHabitTable(perHabit, dailyTotals) {
   const days = dayNumbers();
-  const totalCols = 8 + days.length; // #, name, goal, days..., done, left, progress, %, remove
+  const totalCols = 10 + days.length; // #, name, goal, days..., done, left, progress, %, streak, best, remove
 
   els.tableHeadRow.innerHTML = `
     <th>#</th><th class="name-cell">Habit Name</th><th>Goal</th>
     ${days.map((d) => `<th>${d}</th>`).join("")}
-    <th>Done</th><th>Left</th><th>Progress</th><th>%</th><th></th>
+    <th>Done</th><th>Left</th><th>Progress</th><th>%</th><th>Streak</th><th>Best</th><th></th>
   `;
 
   els.tableBody.innerHTML = "";
@@ -359,7 +428,7 @@ function renderHabitTable(perHabit, dailyTotals) {
           btn.textContent = "✓";
         }
         btn.addEventListener("click", async () => {
-          await window.api.habits.toggleCheck(h.id, d);
+          await window.api.habits.toggleCheck(h.id, dateStrFor(d));
           await loadHabits();
           renderAll();
         });
@@ -391,6 +460,17 @@ function renderHabitTable(perHabit, dailyTotals) {
       pctTd.className = "pct-cell";
       tr.appendChild(pctTd);
 
+      const streakTd = document.createElement("td");
+      streakTd.className = "streak-cell";
+      streakTd.innerHTML =
+        h.currentStreak > 0 ? `🔥 ${h.currentStreak}` : `<span class="muted">0</span>`;
+      tr.appendChild(streakTd);
+
+      const bestStreakTd = document.createElement("td");
+      bestStreakTd.className = "muted";
+      bestStreakTd.textContent = h.bestStreak;
+      tr.appendChild(bestStreakTd);
+
       const removeTd = document.createElement("td");
       const removeBtn = document.createElement("button");
       removeBtn.textContent = "✕";
@@ -419,7 +499,7 @@ function renderHabitTable(perHabit, dailyTotals) {
   addBtn.className = "add-habit-btn";
   addBtn.title = "Add habit";
   addBtn.addEventListener("click", async () => {
-    await window.api.habits.add(monthKey(), "", daysInMonth());
+    await window.api.habits.add("", daysInMonth());
     await loadHabits();
     renderAll();
   });
@@ -468,9 +548,9 @@ async function loadExampleHabits() {
     { name: "Learn Code", goal: 15, mod: 3, offset: 2 },
   ];
   for (const s of seed) {
-    const id = await window.api.habits.add(monthKey(), s.name, s.goal);
+    const id = await window.api.habits.add(s.name, s.goal);
     for (let d = 1; d <= daysInMonth(); d++) {
-      if ((d + s.offset) % s.mod === 0) await window.api.habits.toggleCheck(id, d);
+      if ((d + s.offset) % s.mod === 0) await window.api.habits.toggleCheck(id, dateStrFor(d));
     }
   }
   await loadHabits();

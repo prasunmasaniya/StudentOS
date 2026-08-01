@@ -208,3 +208,26 @@ tbody tr { border-top: 1px solid var(--border); }
   margin: 0 0 8px 0; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;
 }
 .week-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; }
+
+/* Statistics dashboard */
+.stats-dashboard-section { margin-bottom: 16px; }
+.stats-dashboard {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 640px) { .stats-dashboard { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1024px) { .stats-dashboard { grid-template-columns: repeat(6, 1fr); } }
+.stat-tile { text-align: center; padding: 14px 10px; }
+.stat-value { font-size: 22px; font-weight: 700; line-height: 1.15; }
+.stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* Streak column in the habit grid */
+.streak-cell { font-weight: 600; }

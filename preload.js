@@ -2,12 +2,12 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
   habits: {
-    list: (monthKey) => ipcRenderer.invoke("habits:list", monthKey),
-    add: (monthKey, name, goal) => ipcRenderer.invoke("habits:add", monthKey, name, goal),
+    list: (year, month) => ipcRenderer.invoke("habits:list", year, month),
+    add: (name, goal) => ipcRenderer.invoke("habits:add", name, goal),
     remove: (habitId) => ipcRenderer.invoke("habits:remove", habitId),
     updateName: (habitId, name) => ipcRenderer.invoke("habits:updateName", habitId, name),
     updateGoal: (habitId, goal) => ipcRenderer.invoke("habits:updateGoal", habitId, goal),
-    toggleCheck: (habitId, day) => ipcRenderer.invoke("habits:toggleCheck", habitId, day),
+    toggleCheck: (habitId, dateStr) => ipcRenderer.invoke("habits:toggleCheck", habitId, dateStr),
   },
   quotes: {
     list: () => ipcRenderer.invoke("quotes:list"),

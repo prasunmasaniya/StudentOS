@@ -40,12 +40,12 @@ app.on("before-quit", () => {
 });
 
 // ---- IPC: habits ----
-ipcMain.handle("habits:list", (_e, monthKey) => db.listHabits(monthKey));
-ipcMain.handle("habits:add", (_e, monthKey, name, goal) => db.addHabit(monthKey, name, goal));
+ipcMain.handle("habits:list", (_e, year, month) => db.listHabits(year, month));
+ipcMain.handle("habits:add", (_e, name, goal) => db.addHabit(name, goal));
 ipcMain.handle("habits:remove", (_e, habitId) => db.removeHabit(habitId));
 ipcMain.handle("habits:updateName", (_e, habitId, name) => db.updateHabitName(habitId, name));
 ipcMain.handle("habits:updateGoal", (_e, habitId, goal) => db.updateHabitGoal(habitId, goal));
-ipcMain.handle("habits:toggleCheck", (_e, habitId, day) => db.toggleCheck(habitId, day));
+ipcMain.handle("habits:toggleCheck", (_e, habitId, dateStr) => db.toggleCheck(habitId, dateStr));
 
 // ---- IPC: quotes ----
 ipcMain.handle("quotes:list", () => db.listQuotes());

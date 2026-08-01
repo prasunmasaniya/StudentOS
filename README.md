@@ -1,8 +1,16 @@
 # Project Titan
 
 A desktop habit and productivity tracker — checklist-style daily targets, automatic
-percentage/streak calculations, a monthly trend graph, weekly breakdowns, dark mode,
-and a daily rotating quote you curate yourself.
+percentage/streak calculations, a monthly trend graph, weekly breakdowns, a
+statistics dashboard, dark mode, and a daily rotating quote you curate yourself.
+
+**v1.1 note:** habits used to be re-created separately for each month. They're now
+persistent — the same habit carries across months, which is what makes real
+current/best streaks possible (a streak has to be able to cross a month boundary).
+If you already had habits/checks from v1.0, they're migrated automatically the
+first time you launch this version (habits with the same name across different
+months get merged into one). Your old data isn't deleted — it's kept as a backup
+inside the database under renamed tables, just no longer used by the app.
 
 Built with **Electron** (desktop shell) + **better-sqlite3** (local database), no
 frontend build step required — just plain HTML/CSS/JS.
@@ -91,8 +99,6 @@ This first version covers the core habit tracker end to end (persistent, matches
 the reviewed UI). Everything below is still on the list for later phases, in
 roughly the order it makes sense to tackle:
 
-- Streak tracking (current/best streak per habit)
-- Statistics dashboard (beyond the current top-performance panel)
 - Calendar integration
 - PDF & Excel export
 - Notifications / reminders before deadlines
