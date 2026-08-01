@@ -55,37 +55,8 @@ npx electron-rebuild -f -w better-sqlite3
 This happens if the automatic rebuild step didn't run — usually only an issue on
 first install on some Windows setups.
 
-## 6. Publishing to GitHub
 
-From inside the `project-titan` folder:
-
-```
-git init
-git add .
-git commit -m "Initial commit: Project Titan desktop app"
-```
-
-Then create an empty repository on github.com (don't initialize it with a README —
-you already have one), and it will show you two commands like these:
-
-```
-git remote add origin https://github.com/<your-username>/project-titan.git
-git branch -M main
-git push -u origin main
-```
-
-Run those, and your code is live on GitHub. `node_modules` won't be pushed (it's
-excluded in `.gitignore`) — anyone who clones the repo just runs `npm install`
-themselves.
-
-For future changes, the day-to-day loop is:
-```
-git add .
-git commit -m "describe what changed"
-git push
-```
-
-## 7. Roadmap — not built yet
+## 6. Roadmap — not built yet
 
 This first version covers the core habit tracker end to end (persistent, matches
 the reviewed UI). Everything below is still on the list for later phases, in
