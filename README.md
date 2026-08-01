@@ -1,0 +1,122 @@
+# Project Titan
+
+A desktop habit and productivity tracker — checklist-style daily targets, automatic
+percentage/streak calculations, a monthly trend graph, weekly breakdowns, dark mode,
+and a daily rotating quote you curate yourself.
+
+Built with **Electron** (desktop shell) + **better-sqlite3** (local database), no
+frontend build step required — just plain HTML/CSS/JS.
+
+## 1. Requirements
+
+- **Node.js** (LTS version) — download from https://nodejs.org if you don't have it.
+  To check if it's installed, open a terminal and run:
+  ```
+  node -v
+  ```
+
+## 2. Setup
+
+1. Unzip this project somewhere on your computer.
+2. Open a terminal **inside the `project-titan` folder**.
+3. Install dependencies:
+   ```
+   npm install
+   ```
+   This installs Electron and the SQLite library, and automatically rebuilds the
+   SQLite library so it works inside Electron (via the `postinstall` step) — you
+   shouldn't need to do anything extra.
+
+## 3. Run it
+
+```
+npm start
+```
+
+A window should open with the app. That's it — you're running a real desktop app.
+
+## 4. Where your data lives
+
+Everything (habits, checkmarks, quotes) is saved to a local SQLite file in your
+OS's app-data folder, **not inside the project folder** — so it survives updates
+to the code. On most systems that's something like:
+
+- Windows: `%APPDATA%\project-titan\project-titan.db`
+- macOS: `~/Library/Application Support/project-titan/project-titan.db`
+- Linux: `~/.config/project-titan/project-titan.db`
+
+## 5. Troubleshooting
+
+**"better-sqlite3" fails to load / native module error:**
+Run this manually, then restart the app:
+```
+npx electron-rebuild -f -w better-sqlite3
+```
+This happens if the automatic rebuild step didn't run — usually only an issue on
+first install on some Windows setups.
+
+## 6. Publishing to GitHub
+
+From inside the `project-titan` folder:
+
+```
+git init
+git add .
+git commit -m "Initial commit: Project Titan desktop app"
+```
+
+Then create an empty repository on github.com (don't initialize it with a README —
+you already have one), and it will show you two commands like these:
+
+```
+git remote add origin https://github.com/<your-username>/project-titan.git
+git branch -M main
+git push -u origin main
+```
+
+Run those, and your code is live on GitHub. `node_modules` won't be pushed (it's
+excluded in `.gitignore`) — anyone who clones the repo just runs `npm install`
+themselves.
+
+For future changes, the day-to-day loop is:
+```
+git add .
+git commit -m "describe what changed"
+git push
+```
+
+## 7. Roadmap — not built yet
+
+This first version covers the core habit tracker end to end (persistent, matches
+the reviewed UI). Everything below is still on the list for later phases, in
+roughly the order it makes sense to tackle:
+
+- Streak tracking (current/best streak per habit)
+- Statistics dashboard (beyond the current top-performance panel)
+- Calendar integration
+- PDF & Excel export
+- Notifications / reminders before deadlines
+- Goals & achievements
+- Deadline setter + course assignments, project milestones, competition
+  deadlines, exams
+- Pomodoro sessions
+- Lecture notes, useful websites, research papers, images/diagrams, project
+  ideas (a notes/library section)
+- Packaging into a real installer (`.exe`/`.dmg`) via `electron-builder`
+- Mobile app + syncing with this desktop app (will need a small backend/cloud
+  database once you get here, since two separate local SQLite files can't sync
+  to each other on their own)
+
+## 8. Project structure
+
+```
+project-titan/
+├── package.json      Dependencies + npm scripts
+├── main.js            Electron main process (window + IPC handlers)
+├── preload.js          Secure bridge exposing window.api to the UI
+├── db.js                SQLite schema + all data functions
+├── index.html            App layout
+├── styles.css              Visual styling (incl. dark mode)
+├── renderer.js              UI logic: rendering, calculations, events
+└── .gitignore
+```

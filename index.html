@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>Project Titan</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <div id="quoteBanner" class="quote-banner"></div>
+
+    <header class="header">
+      <h1 class="app-title">Project Titan</h1>
+      <div class="header-controls">
+        <button id="darkToggleBtn" class="icon-btn" title="Toggle dark mode">🌙</button>
+        <button id="quoteToggleBtn" class="icon-btn" title="Manage quotes">❝</button>
+        <select id="monthSelect" class="month-select"></select>
+      </div>
+    </header>
+
+    <section id="quotePanel" class="card quote-panel hidden">
+      <h2 class="card-label">Daily quotes</h2>
+      <p class="muted small">
+        Add quotes below. One is shown per day and automatically moves to the next tomorrow,
+        cycling through your list in order.
+      </p>
+      <div class="quote-form">
+        <input id="quoteTextInput" type="text" placeholder="Quote text" />
+        <input id="quoteAuthorInput" type="text" placeholder="Author" />
+        <button id="addQuoteBtn" class="btn btn-primary">+ Add</button>
+      </div>
+      <ul id="quoteList" class="quote-list"></ul>
+    </section>
+
+    <div class="stats-row">
+      <div class="card top-performance">
+        <h2 class="card-label">Top performance</h2>
+        <ul id="topPerformanceList"></ul>
+      </div>
+      <div class="card monthly-dynamics">
+        <h2 class="card-label">Monthly dynamics</h2>
+        <canvas id="dynamicsChart" height="170"></canvas>
+      </div>
+    </div>
+
+    <div class="card grid-card">
+      <div class="table-scroll">
+        <table id="habitTable">
+          <thead>
+            <tr id="tableHeadRow"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+          <tfoot>
+            <tr id="tableFootRow"></tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="weekly-section">
+      <h2 class="card-label">Weekly breakdown</h2>
+      <div id="weeklyGrid" class="weekly-grid"></div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
