@@ -231,3 +231,118 @@ tbody tr { border-top: 1px solid var(--border); }
 
 /* Streak column in the habit grid */
 .streak-cell { font-weight: 600; }
+
+/* View toggle + export toolbar */
+.view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tab-btn.active { color: var(--text-main); border-color: var(--green); background: var(--green-bg); }
+.toolbar-spacer { flex: 1; }
+
+/* Deadline form */
+.deadline-form-card { margin-bottom: 16px; }
+.deadline-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.deadline-form input[type="text"],
+.deadline-form input[type="date"],
+.deadline-form select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  font-family: inherit;
+}
+.deadline-form input[type="text"] { flex: 1; min-width: 160px; }
+
+/* Calendar */
+.calendar-card { margin-bottom: 16px; }
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.cal-weekday {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding-bottom: 4px;
+}
+.cal-cell {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 64px;
+  padding: 6px;
+  font-size: 11px;
+  overflow: hidden;
+}
+.cal-cell.empty { border: none; }
+.cal-cell.today { border-color: var(--blue); border-width: 2px; }
+.cal-day-num { font-weight: 600; margin-bottom: 4px; }
+.cal-completion-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.cal-fill { height: 100%; }
+.cal-deadline-tag {
+  font-size: 10px;
+  background: var(--green-bg);
+  color: var(--green);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Deadline list */
+.deadline-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.deadline-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.deadline-list button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 13px; flex-shrink: 0; }
+
+/* Export confirmation toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translate(-50%, 12px);
+  background: #111827;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  max-width: 80vw;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.25s, transform 0.25s;
+  pointer-events: none;
+  z-index: 1000;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }

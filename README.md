@@ -4,6 +4,16 @@ A desktop habit and productivity tracker — checklist-style daily targets, auto
 percentage/streak calculations, a monthly trend graph, weekly breakdowns, a
 statistics dashboard, dark mode, and a daily rotating quote you curate yourself.
 
+**v1.2 note:** added a Calendar view (switch to it via the tab above the habit
+grid) that shows each day's completion as a heat bar and lets you add
+deadlines, which show up as tags on their due date. Deadlines also trigger a
+native desktop notification once they're due tomorrow or sooner — note that
+this only fires **while the app is open**; a plain desktop app like this has
+no background service, so if it's closed when a deadline comes due, you'll
+get the reminder the next time you open it instead of exactly on time.
+Also added **Export PDF** and **Export Excel** buttons above the habit grid,
+which export whatever month you're currently viewing.
+
 **v1.1 note:** habits used to be re-created separately for each month. They're now
 persistent — the same habit carries across months, which is what makes real
 current/best streaks possible (a streak has to be able to cross a month boundary).
@@ -63,16 +73,42 @@ npx electron-rebuild -f -w better-sqlite3
 This happens if the automatic rebuild step didn't run — usually only an issue on
 first install on some Windows setups.
 
+## 6. Publishing to GitHub
 
-## 6. Roadmap — not built yet
+From inside the `project-titan` folder:
+
+```
+git init
+git add .
+git commit -m "Initial commit: Project Titan desktop app"
+```
+
+Then create an empty repository on github.com (don't initialize it with a README —
+you already have one), and it will show you two commands like these:
+
+```
+git remote add origin https://github.com/<your-username>/project-titan.git
+git branch -M main
+git push -u origin main
+```
+
+Run those, and your code is live on GitHub. `node_modules` won't be pushed (it's
+excluded in `.gitignore`) — anyone who clones the repo just runs `npm install`
+themselves.
+
+For future changes, the day-to-day loop is:
+```
+git add .
+git commit -m "describe what changed"
+git push
+```
+
+## 7. Roadmap — not built yet
 
 This first version covers the core habit tracker end to end (persistent, matches
 the reviewed UI). Everything below is still on the list for later phases, in
 roughly the order it makes sense to tackle:
 
-- Calendar integration
-- PDF & Excel export
-- Notifications / reminders before deadlines
 - Goals & achievements
 - Deadline setter + course assignments, project milestones, competition
   deadlines, exams
@@ -89,7 +125,7 @@ roughly the order it makes sense to tackle:
 ```
 project-titan/
 ├── package.json      Dependencies + npm scripts
-├── main.js            Electron main process (window + IPC handlers)
+├── main.js            Electron main process (window, IPC, exports, notifications)
 ├── preload.js          Secure bridge exposing window.api to the UI
 ├── db.js                SQLite schema + all data functions
 ├── index.html            App layout

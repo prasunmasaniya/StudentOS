@@ -8,8 +8,10 @@ const state = {
   monthIndex: new Date().getMonth(),
   habits: [],
   quotes: [],
+  deadlines: [],
   darkMode: false,
   quotePanelOpen: false,
+  view: "grid",
 };
 
 const els = {};
@@ -24,7 +26,7 @@ async function init() {
   state.darkMode = savedDark === "1";
   applyDarkMode();
 
-  await Promise.all([loadHabits(), loadQuotes()]);
+  await Promise.all([loadHabits(), loadQuotes(), loadDeadlines()]);
 
   attachEvents();
   renderAll();
@@ -48,6 +50,18 @@ function cacheEls() {
   els.tableBody = document.getElementById("tableBody");
   els.tableFootRow = document.getElementById("tableFootRow");
   els.weeklyGrid = document.getElementById("weeklyGrid");
+  els.gridViewBtn = document.getElementById("gridViewBtn");
+  els.calendarViewBtn = document.getElementById("calendarViewBtn");
+  els.gridViewEl = document.getElementById("gridView");
+  els.calendarViewEl = document.getElementById("calendarView");
+  els.exportPdfBtn = document.getElementById("exportPdfBtn");
+  els.exportExcelBtn = document.getElementById("exportExcelBtn");
+  els.deadlineTitleInput = document.getElementById("deadlineTitleInput");
+  els.deadlineDateInput = document.getElementById("deadlineDateInput");
+  els.deadlineTypeInput = document.getElementById("deadlineTypeInput");
+  els.addDeadlineBtn = document.getElementById("addDeadlineBtn");
+  els.calendarGrid = document.getElementById("calendarGrid");
+  els.deadlineList = document.getElementById("deadlineList");
 }
 
 // ---------- date helpers ----------
@@ -88,6 +102,9 @@ async function loadHabits() {
 }
 async function loadQuotes() {
   state.quotes = await window.api.quotes.list();
+}
+async function loadDeadlines() {
+  state.deadlines = await window.api.deadlines.listForMonth(state.year, state.monthIndex + 1);
 }
 
 function applyDarkMode() {
@@ -197,6 +214,8 @@ function renderAll() {
   renderDynamicsChart(stats.monthlyDynamics);
   renderHabitTable(stats.perHabit, stats.dailyTotals);
   renderWeeklyBreakdown(stats.weeklyBreakdown);
+  renderCalendar(stats.monthlyDynamics);
+  renderDeadlineList();
 }
 
 function renderQuoteBanner() {
@@ -539,6 +558,109 @@ function renderWeeklyBreakdown(weeks) {
   });
 }
 
+function renderCalendar(monthlyDynamics) {
+  const grid = els.calendarGrid;
+  grid.innerHTML = "";
+
+  ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach((w) => {
+    const el = document.createElement("div");
+    el.className = "cal-weekday";
+    el.textContent = w;
+    grid.appendChild(el);
+  });
+
+  const firstWeekday = new Date(state.year, state.monthIndex, 1).getDay();
+  for (let i = 0; i < firstWeekday; i++) {
+    const pad = document.createElement("div");
+    pad.className = "cal-cell empty";
+    grid.appendChild(pad);
+  }
+
+  const deadlinesByDay = {};
+  state.deadlines.forEach((dl) => {
+    const day = Number(dl.due_date.slice(8, 10));
+    if (!deadlinesByDay[day]) deadlinesByDay[day] = [];
+    deadlinesByDay[day].push(dl);
+  });
+
+  const today = new Date();
+  const isCurrentMonthView =
+    today.getFullYear() === state.year && today.getMonth() === state.monthIndex;
+
+  monthlyDynamics.forEach((dd) => {
+    const cell = document.createElement("div");
+    cell.className = "cal-cell";
+    if (isCurrentMonthView && dd.day === today.getDate()) cell.classList.add("today");
+
+    const dayNum = document.createElement("div");
+    dayNum.className = "cal-day-num";
+    dayNum.textContent = dd.day;
+    cell.appendChild(dayNum);
+
+    const bar = document.createElement("div");
+    bar.className = "cal-completion-bar";
+    const fill = document.createElement("div");
+    fill.className = `cal-fill ${barClass(dd.pct)}`;
+    fill.style.width = `${dd.pct}%`;
+    bar.appendChild(fill);
+    cell.appendChild(bar);
+
+    (deadlinesByDay[dd.day] || []).forEach((dl) => {
+      const tag = document.createElement("div");
+      tag.className = "cal-deadline-tag";
+      tag.textContent = dl.title;
+      tag.title = dl.type ? `${dl.type}: ${dl.title}` : dl.title;
+      cell.appendChild(tag);
+    });
+
+    grid.appendChild(cell);
+  });
+}
+
+function renderDeadlineList() {
+  els.deadlineList.innerHTML = "";
+  if (state.deadlines.length === 0) {
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "No deadlines this month.";
+    els.deadlineList.appendChild(li);
+    return;
+  }
+  [...state.deadlines]
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))
+    .forEach((dl) => {
+      const li = document.createElement("li");
+      const span = document.createElement("span");
+      span.innerHTML = `<b>${escapeHtml(dl.due_date)}</b> — ${escapeHtml(dl.title)}${
+        dl.type ? ` <span class="muted">(${escapeHtml(dl.type)})</span>` : ""
+      }`;
+      li.appendChild(span);
+
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "✕";
+      removeBtn.addEventListener("click", async () => {
+        await window.api.deadlines.remove(dl.id);
+        await loadDeadlines();
+        renderAll();
+      });
+      li.appendChild(removeBtn);
+
+      els.deadlineList.appendChild(li);
+    });
+}
+
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
 async function loadExampleHabits() {
   const seed = [
     { name: "Wake up by 7:00 AM", goal: daysInMonth(), mod: 2, offset: 0 },
@@ -573,7 +695,7 @@ function attachEvents() {
 
   els.monthSelect.addEventListener("change", async (e) => {
     state.monthIndex = Number(e.target.value);
-    await loadHabits();
+    await Promise.all([loadHabits(), loadDeadlines()]);
     renderAll();
   });
 
@@ -589,7 +711,59 @@ function attachEvents() {
     renderQuoteList();
   });
 
+  els.gridViewBtn.addEventListener("click", () => setView("grid"));
+  els.calendarViewBtn.addEventListener("click", () => setView("calendar"));
+
+  els.addDeadlineBtn.addEventListener("click", async () => {
+    const title = els.deadlineTitleInput.value.trim();
+    const due = els.deadlineDateInput.value;
+    if (!title || !due) return;
+    await window.api.deadlines.add(title, due, els.deadlineTypeInput.value, "");
+    els.deadlineTitleInput.value = "";
+    els.deadlineDateInput.value = "";
+    els.deadlineTypeInput.value = "";
+    await loadDeadlines();
+    renderAll();
+  });
+
+  els.exportPdfBtn.addEventListener("click", async () => {
+    const payload = buildExportPayload(computeStats());
+    const result = await window.api.export.pdf(payload);
+    if (result.canceled) return;
+    showToast(result.error ? `Export failed: ${result.error}` : `Exported PDF to ${result.filePath}`);
+  });
+
+  els.exportExcelBtn.addEventListener("click", async () => {
+    const payload = buildExportPayload(computeStats());
+    const result = await window.api.export.excel(payload);
+    if (result.canceled) return;
+    showToast(
+      result.error ? `Export failed: ${result.error}` : `Exported Excel file to ${result.filePath}`
+    );
+  });
+
   window.addEventListener("resize", () => {
     renderDynamicsChart(computeStats().monthlyDynamics);
   });
+}
+
+function setView(view) {
+  state.view = view;
+  els.gridViewEl.classList.toggle("hidden", view !== "grid");
+  els.calendarViewEl.classList.toggle("hidden", view !== "calendar");
+  els.gridViewBtn.classList.toggle("active", view === "grid");
+  els.calendarViewBtn.classList.toggle("active", view === "calendar");
+}
+
+function buildExportPayload(stats) {
+  return {
+    year: state.year,
+    month: state.monthIndex + 1,
+    monthName: MONTH_NAMES[state.monthIndex],
+    days: dayNumbers(),
+    perHabit: stats.perHabit,
+    dailyTotals: stats.dailyTotals,
+    weeklyBreakdown: stats.weeklyBreakdown,
+    dashboard: stats.dashboard,
+  };
 }

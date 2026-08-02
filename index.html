@@ -49,17 +49,55 @@
       </div>
     </div>
 
-    <div class="card grid-card">
-      <div class="table-scroll">
-        <table id="habitTable">
-          <thead>
-            <tr id="tableHeadRow"></tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-          <tfoot>
-            <tr id="tableFootRow"></tr>
-          </tfoot>
-        </table>
+    <div class="view-toggle">
+      <button id="gridViewBtn" class="tab-btn active">Grid View</button>
+      <button id="calendarViewBtn" class="tab-btn">Calendar View</button>
+      <div class="toolbar-spacer"></div>
+      <button id="exportPdfBtn" class="btn">Export PDF</button>
+      <button id="exportExcelBtn" class="btn">Export Excel</button>
+    </div>
+
+    <div id="gridView">
+      <div class="card grid-card">
+        <div class="table-scroll">
+          <table id="habitTable">
+            <thead>
+              <tr id="tableHeadRow"></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+            <tfoot>
+              <tr id="tableFootRow"></tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="calendarView" class="hidden">
+      <div class="card deadline-form-card">
+        <h2 class="card-label">Add deadline</h2>
+        <div class="deadline-form">
+          <input id="deadlineTitleInput" type="text" placeholder="Title (e.g. Physics midterm)" />
+          <input id="deadlineDateInput" type="date" />
+          <select id="deadlineTypeInput">
+            <option value="">General</option>
+            <option value="Assignment">Assignment</option>
+            <option value="Exam">Exam</option>
+            <option value="Project">Project</option>
+            <option value="Competition">Competition</option>
+          </select>
+          <button id="addDeadlineBtn" class="btn btn-primary">+ Add</button>
+        </div>
+      </div>
+
+      <div class="card calendar-card">
+        <h2 class="card-label">Calendar</h2>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-label">Deadlines this month</h2>
+        <ul id="deadlineList" class="deadline-list"></ul>
       </div>
     </div>
 

@@ -35,6 +35,16 @@ function init() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS deadlines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      due_date TEXT NOT NULL,
+      type TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      notified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
   `);
 
   const quoteCount = db.prepare("SELECT COUNT(*) AS c FROM quotes").get().c;
@@ -247,6 +257,37 @@ function removeQuote(quoteId) {
   db.prepare("DELETE FROM quotes WHERE id = ?").run(quoteId);
 }
 
+// ---------- deadlines ----------
+function listDeadlines() {
+  return db.prepare("SELECT * FROM deadlines ORDER BY due_date ASC").all();
+}
+function listDeadlinesForMonth(year, month) {
+  const prefix = `${year}-${String(month).padStart(2, "0")}`;
+  return db
+    .prepare("SELECT * FROM deadlines WHERE due_date LIKE ? ORDER BY due_date ASC")
+    .all(`${prefix}%`);
+}
+function addDeadline(title, dueDate, type, notes) {
+  const info = db
+    .prepare(
+      "INSERT INTO deadlines (title, due_date, type, notes, notified, created_at) VALUES (?, ?, ?, ?, 0, ?)"
+    )
+    .run(title, dueDate, type || "", notes || "", formatDate(new Date()));
+  return info.lastInsertRowid;
+}
+function removeDeadline(id) {
+  db.prepare("DELETE FROM deadlines WHERE id = ?").run(id);
+}
+// Anything due tomorrow or sooner (including overdue, e.g. app was closed when
+// it came due) that hasn't triggered a notification yet.
+function getDeadlinesDueSoon() {
+  const tomorrow = formatDate(new Date(Date.now() + 86400000));
+  return db.prepare("SELECT * FROM deadlines WHERE notified = 0 AND due_date <= ?").all(tomorrow);
+}
+function markDeadlineNotified(id) {
+  db.prepare("UPDATE deadlines SET notified = 1 WHERE id = ?").run(id);
+}
+
 // ---------- settings ----------
 function getSetting(key) {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key);
@@ -271,6 +312,12 @@ module.exports = {
   listQuotes,
   addQuote,
   removeQuote,
+  listDeadlines,
+  listDeadlinesForMonth,
+  addDeadline,
+  removeDeadline,
+  getDeadlinesDueSoon,
+  markDeadlineNotified,
   getSetting,
   setSetting,
 };
