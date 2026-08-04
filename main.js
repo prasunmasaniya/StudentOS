@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Notification } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, Notification, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
@@ -28,8 +28,8 @@ app.whenReady().then(() => {
   db.init();
   createWindow();
 
-  checkDeadlineReminders();
-  setInterval(checkDeadlineReminders, 60 * 60 * 1000); // re-check hourly while the app is open
+  checkAllReminders();
+  setInterval(checkAllReminders, 60 * 60 * 1000); // re-check hourly while the app is open
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -65,6 +65,39 @@ ipcMain.handle("deadlines:add", (_e, title, dueDate, type, notes) =>
 );
 ipcMain.handle("deadlines:remove", (_e, id) => db.removeDeadline(id));
 
+// ---- IPC: projects & milestones ----
+ipcMain.handle("projects:list", () => db.listProjects());
+ipcMain.handle("projects:add", (_e, name, description) => db.addProject(name, description));
+ipcMain.handle("projects:remove", (_e, id) => db.removeProject(id));
+ipcMain.handle("milestones:add", (_e, projectId, title, dueDate, notes) =>
+  db.addMilestone(projectId, title, dueDate, notes)
+);
+ipcMain.handle("milestones:updateStatus", (_e, id, status) => db.updateMilestoneStatus(id, status));
+ipcMain.handle("milestones:remove", (_e, id) => db.removeMilestone(id));
+
+// ---- IPC: pomodoro ----
+ipcMain.handle("pomodoro:log", (_e, label, durationMinutes) =>
+  db.logPomodoroSession(label, durationMinutes)
+);
+ipcMain.handle("pomodoro:listToday", () => db.listTodaysPomodoroSessions());
+
+// ---- IPC: library ----
+ipcMain.handle("library:list", () => db.listLibraryItems());
+ipcMain.handle("library:add", (_e, category, title, url, filePath, notes) =>
+  db.addLibraryItem(category, title, url, filePath, notes)
+);
+ipcMain.handle("library:remove", (_e, id) => db.removeLibraryItem(id));
+ipcMain.handle("library:pickFile", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Choose a file",
+    properties: ["openFile"],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0];
+});
+ipcMain.handle("library:openFile", (_e, filePath) => shell.openPath(filePath));
+ipcMain.handle("library:openLink", (_e, url) => shell.openExternal(url));
+
 // ---- IPC: settings ----
 ipcMain.handle("settings:get", (_e, key) => db.getSetting(key));
 ipcMain.handle("settings:set", (_e, key, value) => db.setSetting(key, value));
@@ -73,21 +106,29 @@ ipcMain.handle("settings:set", (_e, key, value) => db.setSetting(key, value));
 ipcMain.handle("export:pdf", (_e, data) => exportPdf(data));
 ipcMain.handle("export:excel", (_e, data) => exportExcel(data));
 
-// ---------- deadline reminders ----------
+// ---- IPC: generic notifications (used by the Pomodoro timer) ----
+ipcMain.handle("notify:show", (_e, title, body) => {
+  if (Notification.isSupported()) new Notification({ title, body }).show();
+});
+
+// ---------- reminders ----------
 // Notifications only fire while the app is open (a plain desktop app has no
 // background service) - this covers anything due tomorrow or sooner,
-// including deadlines that already passed while the app was closed.
-function checkDeadlineReminders() {
-  const dueSoon = db.getDeadlinesDueSoon();
-  dueSoon.forEach((dl) => {
-    if (Notification.isSupported()) {
-      new Notification({
-        title: "Upcoming deadline — Project Titan",
-        body: `${dl.title} is due ${dl.due_date}${dl.type ? ` (${dl.type})` : ""}`,
-      }).show();
-    }
+// including items that already passed while the app was closed.
+function checkAllReminders() {
+  db.getDeadlinesDueSoon().forEach((dl) => {
+    fireNotification(`${dl.title} is due ${dl.due_date}${dl.type ? ` (${dl.type})` : ""}`);
     db.markDeadlineNotified(dl.id);
   });
+  db.getMilestonesDueSoon().forEach((m) => {
+    fireNotification(`Milestone "${m.title}" is due ${m.due_date}`);
+    db.markMilestoneNotified(m.id);
+  });
+}
+function fireNotification(body) {
+  if (Notification.isSupported()) {
+    new Notification({ title: "Upcoming deadline — Project Titan", body }).show();
+  }
 }
 
 // ---------- export ----------

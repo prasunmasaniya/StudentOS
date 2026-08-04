@@ -4,6 +4,15 @@ A desktop habit and productivity tracker — checklist-style daily targets, auto
 percentage/streak calculations, a monthly trend graph, weekly breakdowns, a
 statistics dashboard, dark mode, and a daily rotating quote you curate yourself.
 
+**v1.3 note:** the app is now multi-page instead of one long scrolling screen.
+A sidebar on the left switches between **Habits** (the original front page,
+unchanged), **Milestones** (projects with status-tracked milestones),
+**Pomodoro** (a focus timer that logs sessions), and **Library** (notes,
+useful websites, research papers, and file/image attachments, organized by
+category). See `ADDING_A_PAGE.md` for how this is structured if you want to
+add another page yourself later — every feature from here on gets its own
+page rather than being added to the front page.
+
 **v1.2 note:** added a Calendar view (switch to it via the tab above the habit
 grid) that shows each day's completion as a heat bar and lets you add
 deadlines, which show up as tags on their due date. Deadlines also trigger a
@@ -105,16 +114,16 @@ git push
 
 ## 7. Roadmap — not built yet
 
-This first version covers the core habit tracker end to end (persistent, matches
-the reviewed UI). Everything below is still on the list for later phases, in
-roughly the order it makes sense to tackle:
+The app is now multi-page: **Habits** (front page), **Milestones**, **Pomodoro**,
+and **Library** all live in the sidebar. See `ADDING_A_PAGE.md` for the pattern
+used to add a page — every future feature below should follow it rather than
+getting bolted onto the front page.
+
+Still on the list, in roughly the order it makes sense to tackle:
 
 - Goals & achievements
-- Deadline setter + course assignments, project milestones, competition
-  deadlines, exams
-- Pomodoro sessions
-- Lecture notes, useful websites, research papers, images/diagrams, project
-  ideas (a notes/library section)
+- A richer "deadline setter" (course assignments, exams, competitions) — the
+  Habits page already has a lightweight version of this via Calendar View
 - Packaging into a real installer (`.exe`/`.dmg`) via `electron-builder`
 - Mobile app + syncing with this desktop app (will need a small backend/cloud
   database once you get here, since two separate local SQLite files can't sync
@@ -128,8 +137,9 @@ project-titan/
 ├── main.js            Electron main process (window, IPC, exports, notifications)
 ├── preload.js          Secure bridge exposing window.api to the UI
 ├── db.js                SQLite schema + all data functions
-├── index.html            App layout
+├── index.html            App layout: sidebar nav + one <section> per page
 ├── styles.css              Visual styling (incl. dark mode)
 ├── renderer.js              UI logic: rendering, calculations, events
+├── ADDING_A_PAGE.md          Step-by-step pattern for adding a new page
 └── .gitignore
 ```

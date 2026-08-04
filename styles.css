@@ -11,7 +11,7 @@
   --blue: #2563eb;
 }
 
-.app.dark {
+.shell.dark {
   --bg: #111827;
   --card-bg: #1f2937;
   --text-main: #f3f4f6;
@@ -27,13 +27,46 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-.app {
+.shell {
+  display: flex;
   min-height: 100vh;
   background: var(--bg);
   color: var(--text-main);
-  padding: 24px;
   transition: background 0.15s, color 0.15s;
 }
+
+.sidebar {
+  width: 190px;
+  flex-shrink: 0;
+  background: var(--card-bg);
+  border-right: 1px solid var(--border);
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-brand { font-weight: 700; font-size: 15px; padding: 0 10px 16px; }
+.nav-btn {
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.nav-btn:hover { background: var(--bg); }
+.nav-btn.active { background: var(--green-bg); color: var(--text-main); font-weight: 600; }
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  padding: 24px;
+}
+
+.page-title { font-size: 22px; font-weight: 700; margin: 0 0 16px; }
 
 .muted { color: var(--text-muted); }
 .small { font-size: 12px; }
@@ -346,3 +379,128 @@ tbody tr { border-top: 1px solid var(--border); }
   z-index: 1000;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ================= Milestones page ================= */
+.project-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.project-form input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  font-family: inherit;
+}
+.project-form input[type="text"] { flex: 1; min-width: 160px; }
+
+.project-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+.project-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+.project-card-head h3 { margin: 0; font-size: 15px; }
+
+.milestone-list { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.milestone-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; padding: 6px 4px; }
+
+.status-pill { border: none; border-radius: 999px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 600; }
+.status-pending { background: var(--border); color: var(--text-muted); }
+.status-active { background: #fef3c7; color: #b45309; }
+.status-done { background: var(--green-bg); color: var(--green); }
+.shell.dark .status-active { background: rgba(217, 119, 6, 0.25); color: #fbbf24; }
+
+.milestone-mini-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.milestone-mini-form input {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 12px;
+  font-family: inherit;
+}
+.milestone-mini-form .ms-title { flex: 1; min-width: 140px; }
+
+/* ================= Pomodoro page ================= */
+.pomodoro-layout { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px; }
+@media (min-width: 800px) { .pomodoro-layout { grid-template-columns: 2fr 1fr; } }
+
+.pomodoro-timer-card { text-align: center; padding: 32px 20px; }
+.pomodoro-phase { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
+.pomodoro-time { font-size: 56px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 16px; }
+.pomodoro-label-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  margin-bottom: 16px;
+  font-family: inherit;
+}
+.pomodoro-controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+.pomodoro-controls .btn { min-width: 90px; }
+.pomodoro-settings { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); }
+.pomodoro-settings input {
+  width: 46px;
+  text-align: center;
+  margin: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-main);
+  padding: 2px 4px;
+  font-family: inherit;
+}
+.pomodoro-stats-card { text-align: center; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.pomodoro-stats-card .stat-value { font-size: 30px; }
+.pomodoro-stats-card .stat-label { margin-bottom: 10px; }
+.pomodoro-history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+
+/* ================= Library page ================= */
+.note-form-card { margin-bottom: 16px; }
+.note-form { display: flex; flex-direction: column; gap: 8px; }
+.note-form select,
+.note-form input[type="text"],
+.note-form textarea {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  font-family: inherit;
+}
+.note-form textarea { min-height: 60px; resize: vertical; }
+.note-form-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.attached-chip {
+  background: var(--green-bg);
+  color: var(--green);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.library-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+
+.note-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 700px) { .note-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1100px) { .note-grid { grid-template-columns: repeat(3, 1fr); } }
+.note-card { display: flex; flex-direction: column; gap: 8px; }
+.note-badge {
+  align-self: flex-start;
+  background: var(--border);
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.note-title { margin: 0; font-size: 14px; }
+.note-content { margin: 0; font-size: 12px; color: var(--text-muted); white-space: pre-wrap; }
+.note-link { font-size: 12px; color: var(--blue); word-break: break-all; }
+.note-thumb { width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+.note-remove { align-self: flex-start; font-size: 11px; margin-top: auto; background: none; border: none; color: var(--red); cursor: pointer; }

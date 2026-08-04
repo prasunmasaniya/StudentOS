@@ -21,6 +21,33 @@ contextBridge.exposeInMainWorld("api", {
       ipcRenderer.invoke("deadlines:add", title, dueDate, type, notes),
     remove: (id) => ipcRenderer.invoke("deadlines:remove", id),
   },
+  projects: {
+    list: () => ipcRenderer.invoke("projects:list"),
+    add: (name, description) => ipcRenderer.invoke("projects:add", name, description),
+    remove: (id) => ipcRenderer.invoke("projects:remove", id),
+  },
+  milestones: {
+    add: (projectId, title, dueDate, notes) =>
+      ipcRenderer.invoke("milestones:add", projectId, title, dueDate, notes),
+    updateStatus: (id, status) => ipcRenderer.invoke("milestones:updateStatus", id, status),
+    remove: (id) => ipcRenderer.invoke("milestones:remove", id),
+  },
+  pomodoro: {
+    log: (label, durationMinutes) => ipcRenderer.invoke("pomodoro:log", label, durationMinutes),
+    listToday: () => ipcRenderer.invoke("pomodoro:listToday"),
+  },
+  library: {
+    list: () => ipcRenderer.invoke("library:list"),
+    add: (category, title, url, filePath, notes) =>
+      ipcRenderer.invoke("library:add", category, title, url, filePath, notes),
+    remove: (id) => ipcRenderer.invoke("library:remove", id),
+    pickFile: () => ipcRenderer.invoke("library:pickFile"),
+    openFile: (filePath) => ipcRenderer.invoke("library:openFile", filePath),
+    openLink: (url) => ipcRenderer.invoke("library:openLink", url),
+  },
+  notify: {
+    show: (title, body) => ipcRenderer.invoke("notify:show", title, body),
+  },
   export: {
     pdf: (data) => ipcRenderer.invoke("export:pdf", data),
     excel: (data) => ipcRenderer.invoke("export:excel", data),

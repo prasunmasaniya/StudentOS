@@ -12,6 +12,20 @@ const state = {
   darkMode: false,
   quotePanelOpen: false,
   view: "grid",
+  page: "habits",
+  projects: [],
+  pomodoroToday: [],
+  pomodoro: {
+    phase: "focus",
+    secondsLeft: 25 * 60,
+    running: false,
+    timerId: null,
+    focusCount: 0,
+    durations: { focus: 25, short_break: 5, long_break: 15 },
+  },
+  libraryItems: [],
+  libraryFilter: "All",
+  pendingAttachmentPath: null,
 };
 
 const els = {};
@@ -26,14 +40,27 @@ async function init() {
   state.darkMode = savedDark === "1";
   applyDarkMode();
 
-  await Promise.all([loadHabits(), loadQuotes(), loadDeadlines()]);
+  await Promise.all([
+    loadHabits(),
+    loadQuotes(),
+    loadDeadlines(),
+    loadProjects(),
+    loadPomodoroToday(),
+    loadLibraryItems(),
+    loadPomodoroSettings(),
+  ]);
 
   attachEvents();
   renderAll();
+  renderProjects();
+  renderPomodoroTimer();
+  renderPomodoroToday();
+  renderLibraryFilter();
+  renderLibraryGrid();
 }
 
 function cacheEls() {
-  els.app = document.getElementById("app");
+  els.shell = document.getElementById("shell");
   els.quoteBanner = document.getElementById("quoteBanner");
   els.darkToggleBtn = document.getElementById("darkToggleBtn");
   els.quoteToggleBtn = document.getElementById("quoteToggleBtn");
@@ -62,6 +89,36 @@ function cacheEls() {
   els.addDeadlineBtn = document.getElementById("addDeadlineBtn");
   els.calendarGrid = document.getElementById("calendarGrid");
   els.deadlineList = document.getElementById("deadlineList");
+
+  // Milestones page
+  els.projectNameInput = document.getElementById("projectNameInput");
+  els.projectDescInput = document.getElementById("projectDescInput");
+  els.addProjectBtn = document.getElementById("addProjectBtn");
+  els.projectList = document.getElementById("projectList");
+
+  // Pomodoro page
+  els.pomodoroPhaseLabel = document.getElementById("pomodoroPhaseLabel");
+  els.pomodoroTime = document.getElementById("pomodoroTime");
+  els.pomodoroLabelInput = document.getElementById("pomodoroLabelInput");
+  els.pomodoroStartBtn = document.getElementById("pomodoroStartBtn");
+  els.pomodoroResetBtn = document.getElementById("pomodoroResetBtn");
+  els.focusMinInput = document.getElementById("focusMinInput");
+  els.shortBreakMinInput = document.getElementById("shortBreakMinInput");
+  els.longBreakMinInput = document.getElementById("longBreakMinInput");
+  els.pomodoroTodayCount = document.getElementById("pomodoroTodayCount");
+  els.pomodoroTodayMinutes = document.getElementById("pomodoroTodayMinutes");
+  els.pomodoroHistoryList = document.getElementById("pomodoroHistoryList");
+
+  // Library page
+  els.libraryCategoryInput = document.getElementById("libraryCategoryInput");
+  els.libraryTitleInput = document.getElementById("libraryTitleInput");
+  els.libraryUrlInput = document.getElementById("libraryUrlInput");
+  els.libraryNotesInput = document.getElementById("libraryNotesInput");
+  els.attachFileBtn = document.getElementById("attachFileBtn");
+  els.attachedFileChip = document.getElementById("attachedFileChip");
+  els.addLibraryItemBtn = document.getElementById("addLibraryItemBtn");
+  els.libraryFilter = document.getElementById("libraryFilter");
+  els.libraryGrid = document.getElementById("libraryGrid");
 }
 
 // ---------- date helpers ----------
@@ -106,9 +163,30 @@ async function loadQuotes() {
 async function loadDeadlines() {
   state.deadlines = await window.api.deadlines.listForMonth(state.year, state.monthIndex + 1);
 }
+async function loadProjects() {
+  state.projects = await window.api.projects.list();
+}
+async function loadPomodoroToday() {
+  state.pomodoroToday = await window.api.pomodoro.listToday();
+}
+async function loadLibraryItems() {
+  state.libraryItems = await window.api.library.list();
+}
+async function loadPomodoroSettings() {
+  const f = await window.api.settings.get("pomodoro_focus");
+  const s = await window.api.settings.get("pomodoro_short_break");
+  const l = await window.api.settings.get("pomodoro_long_break");
+  if (f) state.pomodoro.durations.focus = Number(f);
+  if (s) state.pomodoro.durations.short_break = Number(s);
+  if (l) state.pomodoro.durations.long_break = Number(l);
+  els.focusMinInput.value = state.pomodoro.durations.focus;
+  els.shortBreakMinInput.value = state.pomodoro.durations.short_break;
+  els.longBreakMinInput.value = state.pomodoro.durations.long_break;
+  state.pomodoro.secondsLeft = pomodoroPhaseSeconds(state.pomodoro.phase);
+}
 
 function applyDarkMode() {
-  els.app.classList.toggle("dark", state.darkMode);
+  els.shell.classList.toggle("dark", state.darkMode);
   els.darkToggleBtn.textContent = state.darkMode ? "☀️" : "🌙";
 }
 
@@ -661,6 +739,294 @@ function showToast(message) {
   }, 3000);
 }
 
+// ================= Milestones page =================
+function nextStatus(s) {
+  if (s === "todo") return "in_progress";
+  if (s === "in_progress") return "done";
+  return "todo";
+}
+function statusLabel(s) {
+  return { todo: "To do", in_progress: "In progress", done: "Done" }[s] || s;
+}
+function statusClass(s) {
+  return { todo: "status-pending", in_progress: "status-active", done: "status-done" }[s] || "";
+}
+
+function renderProjects() {
+  const container = els.projectList;
+  container.innerHTML = "";
+
+  if (state.projects.length === 0) {
+    container.innerHTML = `<p class="muted">No projects yet. Add one above to start tracking milestones.</p>`;
+    return;
+  }
+
+  state.projects.forEach((p) => {
+    const done = p.milestones.filter((m) => m.status === "done").length;
+    const pct = p.milestones.length ? Math.round((done / p.milestones.length) * 100) : 0;
+
+    const card = document.createElement("div");
+    card.className = "card project-card";
+
+    const head = document.createElement("div");
+    head.className = "project-card-head";
+    head.innerHTML = `
+      <div>
+        <h3>${escapeHtml(p.name)}</h3>
+        ${p.description ? `<p class="muted small">${escapeHtml(p.description)}</p>` : ""}
+      </div>
+    `;
+    const removeProjectBtn = document.createElement("button");
+    removeProjectBtn.className = "remove-btn";
+    removeProjectBtn.textContent = "✕ Remove project";
+    removeProjectBtn.addEventListener("click", async () => {
+      if (!confirm(`Delete project "${p.name}" and all its milestones?`)) return;
+      await window.api.projects.remove(p.id);
+      await loadProjects();
+      renderProjects();
+    });
+    head.appendChild(removeProjectBtn);
+    card.appendChild(head);
+
+    const track = document.createElement("div");
+    track.className = "progress-track";
+    track.innerHTML = `<div class="progress-fill ${barClass(pct)}" style="width:${pct}%"></div>`;
+    card.appendChild(track);
+
+    const summary = document.createElement("p");
+    summary.className = "muted small";
+    summary.style.margin = "6px 0 0";
+    summary.textContent = `${done}/${p.milestones.length} milestones complete`;
+    card.appendChild(summary);
+
+    const list = document.createElement("ul");
+    list.className = "milestone-list";
+    [...p.milestones]
+      .sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""))
+      .forEach((m) => {
+        const li = document.createElement("li");
+        const left = document.createElement("span");
+        left.innerHTML = `${escapeHtml(m.title)}${
+          m.due_date ? ` <span class="muted">— due ${escapeHtml(m.due_date)}</span>` : ""
+        }`;
+        li.appendChild(left);
+
+        const statusBtn = document.createElement("button");
+        statusBtn.className = `status-pill ${statusClass(m.status)}`;
+        statusBtn.textContent = statusLabel(m.status);
+        statusBtn.addEventListener("click", async () => {
+          await window.api.milestones.updateStatus(m.id, nextStatus(m.status));
+          await loadProjects();
+          renderProjects();
+        });
+        li.appendChild(statusBtn);
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "remove-btn";
+        removeBtn.textContent = "✕";
+        removeBtn.addEventListener("click", async () => {
+          await window.api.milestones.remove(m.id);
+          await loadProjects();
+          renderProjects();
+        });
+        li.appendChild(removeBtn);
+
+        list.appendChild(li);
+      });
+    card.appendChild(list);
+
+    const miniForm = document.createElement("div");
+    miniForm.className = "milestone-mini-form";
+    miniForm.innerHTML = `
+      <input type="text" placeholder="New milestone" class="ms-title" />
+      <input type="date" class="ms-due" />
+      <button class="btn ms-add">+ Add milestone</button>
+    `;
+    const titleInput = miniForm.querySelector(".ms-title");
+    const dueInput = miniForm.querySelector(".ms-due");
+    miniForm.querySelector(".ms-add").addEventListener("click", async () => {
+      const title = titleInput.value.trim();
+      if (!title) return;
+      await window.api.milestones.add(p.id, title, dueInput.value, "");
+      await loadProjects();
+      renderProjects();
+    });
+    card.appendChild(miniForm);
+
+    container.appendChild(card);
+  });
+}
+
+// ================= Pomodoro page =================
+function pomodoroPhaseSeconds(phase) {
+  const d = state.pomodoro.durations;
+  if (phase === "focus") return d.focus * 60;
+  if (phase === "short_break") return d.short_break * 60;
+  return d.long_break * 60;
+}
+function pomodoroPhaseLabel(phase) {
+  return { focus: "Focus", short_break: "Short Break", long_break: "Long Break" }[phase];
+}
+function renderPomodoroTimer() {
+  const mm = String(Math.floor(state.pomodoro.secondsLeft / 60)).padStart(2, "0");
+  const ss = String(state.pomodoro.secondsLeft % 60).padStart(2, "0");
+  els.pomodoroTime.textContent = `${mm}:${ss}`;
+  els.pomodoroPhaseLabel.textContent = pomodoroPhaseLabel(state.pomodoro.phase);
+  els.pomodoroStartBtn.textContent = state.pomodoro.running ? "Pause" : "Start";
+}
+function pomodoroTick() {
+  state.pomodoro.secondsLeft -= 1;
+  if (state.pomodoro.secondsLeft <= 0) {
+    pomodoroPhaseComplete();
+  } else {
+    renderPomodoroTimer();
+  }
+}
+async function pomodoroPhaseComplete() {
+  clearInterval(state.pomodoro.timerId);
+  state.pomodoro.running = false;
+
+  if (state.pomodoro.phase === "focus") {
+    const minutes = state.pomodoro.durations.focus;
+    await window.api.pomodoro.log(els.pomodoroLabelInput.value.trim(), minutes);
+    state.pomodoro.focusCount += 1;
+    await loadPomodoroToday();
+    renderPomodoroToday();
+    window.api.notify.show("Focus session complete — Project Titan", "Nice work. Time for a break.");
+    state.pomodoro.phase = state.pomodoro.focusCount % 4 === 0 ? "long_break" : "short_break";
+  } else {
+    window.api.notify.show("Break's over — Project Titan", "Ready for another focus session?");
+    state.pomodoro.phase = "focus";
+  }
+  state.pomodoro.secondsLeft = pomodoroPhaseSeconds(state.pomodoro.phase);
+  renderPomodoroTimer();
+}
+function renderPomodoroToday() {
+  els.pomodoroTodayCount.textContent = state.pomodoroToday.length;
+  els.pomodoroTodayMinutes.textContent = state.pomodoroToday.reduce(
+    (a, s) => a + s.duration_minutes,
+    0
+  );
+
+  els.pomodoroHistoryList.innerHTML = "";
+  if (state.pomodoroToday.length === 0) {
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "No sessions logged yet today.";
+    els.pomodoroHistoryList.appendChild(li);
+    return;
+  }
+  state.pomodoroToday.forEach((s) => {
+    const li = document.createElement("li");
+    const time = (s.completed_at || "").slice(11, 16);
+    li.innerHTML = `<span>${escapeHtml(time)} — ${s.duration_minutes} min${
+      s.label ? ` <span class="muted">(${escapeHtml(s.label)})</span>` : ""
+    }</span>`;
+    els.pomodoroHistoryList.appendChild(li);
+  });
+}
+
+// ================= Library page =================
+function fileBaseName(p) {
+  if (!p) return "";
+  return p.split(/[\\/]/).pop();
+}
+function isImageFile(name) {
+  return /\.(png|jpe?g|gif|webp|bmp)$/i.test(name || "");
+}
+function renderLibraryFilter() {
+  const categories = ["All", "Lecture Note", "Website", "Research Paper", "Image/Diagram", "Project Idea"];
+  els.libraryFilter.innerHTML = "";
+  categories.forEach((c) => {
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (state.libraryFilter === c ? " active" : "");
+    btn.textContent = c;
+    btn.addEventListener("click", () => {
+      state.libraryFilter = c;
+      renderLibraryFilter();
+      renderLibraryGrid();
+    });
+    els.libraryFilter.appendChild(btn);
+  });
+}
+function renderLibraryGrid() {
+  const grid = els.libraryGrid;
+  grid.innerHTML = "";
+  const filtered =
+    state.libraryFilter === "All"
+      ? state.libraryItems
+      : state.libraryItems.filter((n) => n.category === state.libraryFilter);
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<p class="muted">Nothing here yet.</p>`;
+    return;
+  }
+
+  filtered.forEach((n) => {
+    const card = document.createElement("div");
+    card.className = "card note-card";
+
+    const badge = document.createElement("span");
+    badge.className = "note-badge";
+    badge.textContent = n.category;
+    card.appendChild(badge);
+
+    const title = document.createElement("h3");
+    title.className = "note-title";
+    title.textContent = n.title;
+    card.appendChild(title);
+
+    if (n.notes) {
+      const p = document.createElement("p");
+      p.className = "note-content";
+      p.textContent = n.notes;
+      card.appendChild(p);
+    }
+
+    if (n.url) {
+      const link = document.createElement("a");
+      link.href = "#";
+      link.className = "note-link";
+      link.textContent = n.url;
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.api.library.openLink(n.url);
+      });
+      card.appendChild(link);
+    }
+
+    if (n.file_path) {
+      const fname = fileBaseName(n.file_path);
+      if (isImageFile(fname)) {
+        const img = document.createElement("img");
+        img.className = "note-thumb";
+        img.src = `file://${n.file_path}`;
+        img.title = fname;
+        img.addEventListener("click", () => window.api.library.openFile(n.file_path));
+        card.appendChild(img);
+      } else {
+        const chip = document.createElement("button");
+        chip.className = "attached-chip";
+        chip.textContent = `📄 ${fname}`;
+        chip.addEventListener("click", () => window.api.library.openFile(n.file_path));
+        card.appendChild(chip);
+      }
+    }
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "note-remove";
+    removeBtn.textContent = "✕ Remove";
+    removeBtn.addEventListener("click", async () => {
+      await window.api.library.remove(n.id);
+      await loadLibraryItems();
+      renderLibraryGrid();
+    });
+    card.appendChild(removeBtn);
+
+    grid.appendChild(card);
+  });
+}
+
 async function loadExampleHabits() {
   const seed = [
     { name: "Wake up by 7:00 AM", goal: daysInMonth(), mod: 2, offset: 0 },
@@ -681,6 +1047,10 @@ async function loadExampleHabits() {
 
 // ---------- events ----------
 function attachEvents() {
+  document.querySelectorAll(".nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => setPage(btn.dataset.page));
+  });
+
   els.darkToggleBtn.addEventListener("click", async () => {
     state.darkMode = !state.darkMode;
     applyDarkMode();
@@ -742,9 +1112,94 @@ function attachEvents() {
     );
   });
 
-  window.addEventListener("resize", () => {
-    renderDynamicsChart(computeStats().monthlyDynamics);
+  els.addProjectBtn.addEventListener("click", async () => {
+    const name = els.projectNameInput.value.trim();
+    if (!name) return;
+    const desc = els.projectDescInput.value.trim();
+    await window.api.projects.add(name, desc);
+    els.projectNameInput.value = "";
+    els.projectDescInput.value = "";
+    await loadProjects();
+    renderProjects();
   });
+
+  els.pomodoroStartBtn.addEventListener("click", () => {
+    if (state.pomodoro.running) {
+      clearInterval(state.pomodoro.timerId);
+      state.pomodoro.running = false;
+    } else {
+      state.pomodoro.running = true;
+      state.pomodoro.timerId = setInterval(pomodoroTick, 1000);
+    }
+    renderPomodoroTimer();
+  });
+
+  els.pomodoroResetBtn.addEventListener("click", () => {
+    clearInterval(state.pomodoro.timerId);
+    state.pomodoro.running = false;
+    state.pomodoro.phase = "focus";
+    state.pomodoro.secondsLeft = pomodoroPhaseSeconds("focus");
+    renderPomodoroTimer();
+  });
+
+  [
+    ["focusMinInput", "focus"],
+    ["shortBreakMinInput", "short_break"],
+    ["longBreakMinInput", "long_break"],
+  ].forEach(([elId, key]) => {
+    els[elId].addEventListener("change", async (e) => {
+      const val = Math.max(1, Number(e.target.value) || 1);
+      state.pomodoro.durations[key] = val;
+      await window.api.settings.set(`pomodoro_${key}`, String(val));
+      if (!state.pomodoro.running && state.pomodoro.phase === key) {
+        state.pomodoro.secondsLeft = val * 60;
+        renderPomodoroTimer();
+      }
+    });
+  });
+
+  els.attachFileBtn.addEventListener("click", async () => {
+    const filePath = await window.api.library.pickFile();
+    if (!filePath) return;
+    state.pendingAttachmentPath = filePath;
+    els.attachedFileChip.textContent = `📎 ${fileBaseName(filePath)}`;
+    els.attachedFileChip.classList.remove("hidden");
+  });
+
+  els.addLibraryItemBtn.addEventListener("click", async () => {
+    const title = els.libraryTitleInput.value.trim();
+    if (!title) return;
+    const category = els.libraryCategoryInput.value;
+    const url = els.libraryUrlInput.value.trim();
+    const notes = els.libraryNotesInput.value.trim();
+    const filePath = state.pendingAttachmentPath || "";
+
+    await window.api.library.add(category, title, url, filePath, notes);
+
+    els.libraryTitleInput.value = "";
+    els.libraryUrlInput.value = "";
+    els.libraryNotesInput.value = "";
+    state.pendingAttachmentPath = null;
+    els.attachedFileChip.classList.add("hidden");
+    els.attachedFileChip.textContent = "";
+
+    await loadLibraryItems();
+    renderLibraryGrid();
+  });
+
+  window.addEventListener("resize", () => {
+    if (state.page === "habits") renderDynamicsChart(computeStats().monthlyDynamics);
+  });
+}
+
+function setPage(page) {
+  state.page = page;
+  document.querySelectorAll(".page").forEach((el) => el.classList.add("hidden"));
+  document.getElementById(`page-${page}`).classList.remove("hidden");
+  document.querySelectorAll(".nav-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.page === page);
+  });
+  if (page === "habits") renderDynamicsChart(computeStats().monthlyDynamics);
 }
 
 function setView(view) {

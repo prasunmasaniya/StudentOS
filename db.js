@@ -45,6 +45,44 @@ function init() {
       notified INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS milestones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      due_date TEXT DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'todo',
+      notes TEXT DEFAULT '',
+      notified INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pomodoro_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT DEFAULT '',
+      duration_minutes INTEGER NOT NULL,
+      completed_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS library_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT NOT NULL,
+      title TEXT NOT NULL,
+      url TEXT DEFAULT '',
+      file_path TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      created_at TEXT NOT NULL
+    );
   `);
 
   const quoteCount = db.prepare("SELECT COUNT(*) AS c FROM quotes").get().c;
@@ -142,8 +180,6 @@ function close() {
 }
 
 // ---------- streaks ----------
-// Computed from a habit's full check history (across all months), not just
-// the month currently being viewed.
 function computeStreaks(habitId) {
   const rows = db
     .prepare("SELECT date FROM habit_checks WHERE habit_id = ? ORDER BY date ASC")
@@ -288,6 +324,95 @@ function markDeadlineNotified(id) {
   db.prepare("UPDATE deadlines SET notified = 1 WHERE id = ?").run(id);
 }
 
+// ---------- projects & milestones ----------
+function listProjects() {
+  const projects = db.prepare("SELECT * FROM projects ORDER BY sort_order ASC, id ASC").all();
+  const milestoneRows = db
+    .prepare("SELECT * FROM milestones ORDER BY sort_order ASC, id ASC")
+    .all();
+  const byProject = {};
+  for (const m of milestoneRows) {
+    if (!byProject[m.project_id]) byProject[m.project_id] = [];
+    byProject[m.project_id].push(m);
+  }
+  return projects.map((p) => ({ ...p, milestones: byProject[p.id] || [] }));
+}
+function addProject(name, description) {
+  const maxOrder = db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM projects").get().m;
+  const info = db
+    .prepare(
+      "INSERT INTO projects (name, description, sort_order, created_at) VALUES (?, ?, ?, ?)"
+    )
+    .run(name, description || "", maxOrder + 1, formatDate(new Date()));
+  return info.lastInsertRowid;
+}
+function removeProject(id) {
+  db.prepare("DELETE FROM projects WHERE id = ?").run(id);
+}
+function addMilestone(projectId, title, dueDate, notes) {
+  const maxOrder = db
+    .prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM milestones WHERE project_id = ?")
+    .get(projectId).m;
+  const info = db
+    .prepare(
+      `INSERT INTO milestones (project_id, title, due_date, status, notes, notified, sort_order, created_at)
+       VALUES (?, ?, ?, 'todo', ?, 0, ?, ?)`
+    )
+    .run(projectId, title, dueDate || "", notes || "", maxOrder + 1, formatDate(new Date()));
+  return info.lastInsertRowid;
+}
+function updateMilestoneStatus(id, status) {
+  db.prepare("UPDATE milestones SET status = ? WHERE id = ?").run(status, id);
+}
+function removeMilestone(id) {
+  db.prepare("DELETE FROM milestones WHERE id = ?").run(id);
+}
+function getMilestonesDueSoon() {
+  const tomorrow = formatDate(new Date(Date.now() + 86400000));
+  return db
+    .prepare(
+      `SELECT * FROM milestones
+       WHERE notified = 0 AND status != 'done' AND due_date != '' AND due_date <= ?`
+    )
+    .all(tomorrow);
+}
+function markMilestoneNotified(id) {
+  db.prepare("UPDATE milestones SET notified = 1 WHERE id = ?").run(id);
+}
+
+// ---------- pomodoro ----------
+function logPomodoroSession(label, durationMinutes) {
+  const info = db
+    .prepare(
+      "INSERT INTO pomodoro_sessions (label, duration_minutes, completed_at) VALUES (?, ?, ?)"
+    )
+    .run(label || "", durationMinutes, new Date().toISOString());
+  return info.lastInsertRowid;
+}
+function listTodaysPomodoroSessions() {
+  const today = formatDate(new Date());
+  return db
+    .prepare("SELECT * FROM pomodoro_sessions WHERE completed_at LIKE ? ORDER BY completed_at DESC")
+    .all(`${today}%`);
+}
+
+// ---------- library ----------
+function listLibraryItems() {
+  return db.prepare("SELECT * FROM library_items ORDER BY created_at DESC").all();
+}
+function addLibraryItem(category, title, url, filePath, notes) {
+  const info = db
+    .prepare(
+      `INSERT INTO library_items (category, title, url, file_path, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .run(category, title, url || "", filePath || "", notes || "", formatDate(new Date()));
+  return info.lastInsertRowid;
+}
+function removeLibraryItem(id) {
+  db.prepare("DELETE FROM library_items WHERE id = ?").run(id);
+}
+
 // ---------- settings ----------
 function getSetting(key) {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key);
@@ -318,6 +443,19 @@ module.exports = {
   removeDeadline,
   getDeadlinesDueSoon,
   markDeadlineNotified,
+  listProjects,
+  addProject,
+  removeProject,
+  addMilestone,
+  updateMilestoneStatus,
+  removeMilestone,
+  getMilestonesDueSoon,
+  markMilestoneNotified,
+  logPomodoroSession,
+  listTodaysPomodoroSessions,
+  listLibraryItems,
+  addLibraryItem,
+  removeLibraryItem,
   getSetting,
   setSetting,
 };

@@ -2,108 +2,204 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' file:;" />
   <title>Project Titan</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app" class="app">
-    <div id="quoteBanner" class="quote-banner"></div>
+  <div id="shell" class="shell">
+    <nav class="sidebar">
+      <div class="sidebar-brand">Project Titan</div>
+      <button class="nav-btn active" data-page="habits">Habits</button>
+      <button class="nav-btn" data-page="milestones">Milestones</button>
+      <button class="nav-btn" data-page="pomodoro">Pomodoro</button>
+      <button class="nav-btn" data-page="library">Library</button>
+    </nav>
 
-    <header class="header">
-      <h1 class="app-title">Project Titan</h1>
-      <div class="header-controls">
-        <button id="darkToggleBtn" class="icon-btn" title="Toggle dark mode">🌙</button>
-        <button id="quoteToggleBtn" class="icon-btn" title="Manage quotes">❝</button>
-        <select id="monthSelect" class="month-select"></select>
-      </div>
-    </header>
+    <div class="main-content">
 
-    <section id="quotePanel" class="card quote-panel hidden">
-      <h2 class="card-label">Daily quotes</h2>
-      <p class="muted small">
-        Add quotes below. One is shown per day and automatically moves to the next tomorrow,
-        cycling through your list in order.
-      </p>
-      <div class="quote-form">
-        <input id="quoteTextInput" type="text" placeholder="Quote text" />
-        <input id="quoteAuthorInput" type="text" placeholder="Author" />
-        <button id="addQuoteBtn" class="btn btn-primary">+ Add</button>
-      </div>
-      <ul id="quoteList" class="quote-list"></ul>
-    </section>
+      <!-- ================= HABITS (front page) ================= -->
+      <section id="page-habits" class="page">
+        <div id="quoteBanner" class="quote-banner"></div>
 
-    <div class="stats-dashboard-section">
-      <h2 class="card-label">Statistics dashboard</h2>
-      <div id="statsDashboard" class="stats-dashboard"></div>
-    </div>
+        <header class="header">
+          <h1 class="app-title">Project Titan</h1>
+          <div class="header-controls">
+            <button id="darkToggleBtn" class="icon-btn" title="Toggle dark mode">🌙</button>
+            <button id="quoteToggleBtn" class="icon-btn" title="Manage quotes">❝</button>
+            <select id="monthSelect" class="month-select"></select>
+          </div>
+        </header>
 
-    <div class="stats-row">
-      <div class="card top-performance">
-        <h2 class="card-label">Top performance</h2>
-        <ul id="topPerformanceList"></ul>
-      </div>
-      <div class="card monthly-dynamics">
-        <h2 class="card-label">Monthly dynamics</h2>
-        <canvas id="dynamicsChart" height="170"></canvas>
-      </div>
-    </div>
+        <section id="quotePanel" class="card quote-panel hidden">
+          <h2 class="card-label">Daily quotes</h2>
+          <p class="muted small">
+            Add quotes below. One is shown per day and automatically moves to the next tomorrow,
+            cycling through your list in order.
+          </p>
+          <div class="quote-form">
+            <input id="quoteTextInput" type="text" placeholder="Quote text" />
+            <input id="quoteAuthorInput" type="text" placeholder="Author" />
+            <button id="addQuoteBtn" class="btn btn-primary">+ Add</button>
+          </div>
+          <ul id="quoteList" class="quote-list"></ul>
+        </section>
 
-    <div class="view-toggle">
-      <button id="gridViewBtn" class="tab-btn active">Grid View</button>
-      <button id="calendarViewBtn" class="tab-btn">Calendar View</button>
-      <div class="toolbar-spacer"></div>
-      <button id="exportPdfBtn" class="btn">Export PDF</button>
-      <button id="exportExcelBtn" class="btn">Export Excel</button>
-    </div>
-
-    <div id="gridView">
-      <div class="card grid-card">
-        <div class="table-scroll">
-          <table id="habitTable">
-            <thead>
-              <tr id="tableHeadRow"></tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-            <tfoot>
-              <tr id="tableFootRow"></tr>
-            </tfoot>
-          </table>
+        <div class="stats-dashboard-section">
+          <h2 class="card-label">Statistics dashboard</h2>
+          <div id="statsDashboard" class="stats-dashboard"></div>
         </div>
-      </div>
-    </div>
 
-    <div id="calendarView" class="hidden">
-      <div class="card deadline-form-card">
-        <h2 class="card-label">Add deadline</h2>
-        <div class="deadline-form">
-          <input id="deadlineTitleInput" type="text" placeholder="Title (e.g. Physics midterm)" />
-          <input id="deadlineDateInput" type="date" />
-          <select id="deadlineTypeInput">
-            <option value="">General</option>
-            <option value="Assignment">Assignment</option>
-            <option value="Exam">Exam</option>
-            <option value="Project">Project</option>
-            <option value="Competition">Competition</option>
-          </select>
-          <button id="addDeadlineBtn" class="btn btn-primary">+ Add</button>
+        <div class="stats-row">
+          <div class="card top-performance">
+            <h2 class="card-label">Top performance</h2>
+            <ul id="topPerformanceList"></ul>
+          </div>
+          <div class="card monthly-dynamics">
+            <h2 class="card-label">Monthly dynamics</h2>
+            <canvas id="dynamicsChart" height="170"></canvas>
+          </div>
         </div>
-      </div>
 
-      <div class="card calendar-card">
-        <h2 class="card-label">Calendar</h2>
-        <div id="calendarGrid" class="calendar-grid"></div>
-      </div>
+        <div class="view-toggle">
+          <button id="gridViewBtn" class="tab-btn active">Grid View</button>
+          <button id="calendarViewBtn" class="tab-btn">Calendar View</button>
+          <div class="toolbar-spacer"></div>
+          <button id="exportPdfBtn" class="btn">Export PDF</button>
+          <button id="exportExcelBtn" class="btn">Export Excel</button>
+        </div>
 
-      <div class="card">
-        <h2 class="card-label">Deadlines this month</h2>
-        <ul id="deadlineList" class="deadline-list"></ul>
-      </div>
-    </div>
+        <div id="gridView">
+          <div class="card grid-card">
+            <div class="table-scroll">
+              <table id="habitTable">
+                <thead>
+                  <tr id="tableHeadRow"></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+                <tfoot>
+                  <tr id="tableFootRow"></tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
 
-    <div class="weekly-section">
-      <h2 class="card-label">Weekly breakdown</h2>
-      <div id="weeklyGrid" class="weekly-grid"></div>
+        <div id="calendarView" class="hidden">
+          <div class="card deadline-form-card">
+            <h2 class="card-label">Add deadline</h2>
+            <div class="deadline-form">
+              <input id="deadlineTitleInput" type="text" placeholder="Title (e.g. Physics midterm)" />
+              <input id="deadlineDateInput" type="date" />
+              <select id="deadlineTypeInput">
+                <option value="">General</option>
+                <option value="Assignment">Assignment</option>
+                <option value="Exam">Exam</option>
+                <option value="Project">Project</option>
+                <option value="Competition">Competition</option>
+              </select>
+              <button id="addDeadlineBtn" class="btn btn-primary">+ Add</button>
+            </div>
+          </div>
+
+          <div class="card calendar-card">
+            <h2 class="card-label">Calendar</h2>
+            <div id="calendarGrid" class="calendar-grid"></div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-label">Deadlines this month</h2>
+            <ul id="deadlineList" class="deadline-list"></ul>
+          </div>
+        </div>
+
+        <div class="weekly-section">
+          <h2 class="card-label">Weekly breakdown</h2>
+          <div id="weeklyGrid" class="weekly-grid"></div>
+        </div>
+      </section>
+
+      <!-- ================= MILESTONES ================= -->
+      <section id="page-milestones" class="page hidden">
+        <h1 class="page-title">Project Milestones</h1>
+
+        <div class="card">
+          <h2 class="card-label">New project</h2>
+          <div class="project-form">
+            <input id="projectNameInput" type="text" placeholder="Project name" />
+            <input id="projectDescInput" type="text" placeholder="Description (optional)" />
+            <button id="addProjectBtn" class="btn btn-primary">+ Add project</button>
+          </div>
+        </div>
+
+        <div id="projectList" class="project-list"></div>
+      </section>
+
+      <!-- ================= POMODORO ================= -->
+      <section id="page-pomodoro" class="page hidden">
+        <h1 class="page-title">Pomodoro Sessions</h1>
+
+        <div class="pomodoro-layout">
+          <div class="card pomodoro-timer-card">
+            <div id="pomodoroPhaseLabel" class="pomodoro-phase">Focus</div>
+            <div id="pomodoroTime" class="pomodoro-time">25:00</div>
+            <input id="pomodoroLabelInput" type="text" placeholder="What are you working on?" class="pomodoro-label-input" />
+            <div class="pomodoro-controls">
+              <button id="pomodoroStartBtn" class="btn btn-primary">Start</button>
+              <button id="pomodoroResetBtn" class="btn">Reset</button>
+            </div>
+            <div class="pomodoro-settings">
+              <label>Focus <input id="focusMinInput" type="number" min="1" value="25" /> min</label>
+              <label>Short break <input id="shortBreakMinInput" type="number" min="1" value="5" /> min</label>
+              <label>Long break <input id="longBreakMinInput" type="number" min="1" value="15" /> min</label>
+            </div>
+          </div>
+
+          <div class="card pomodoro-stats-card">
+            <h2 class="card-label">Today</h2>
+            <div class="stat-value" id="pomodoroTodayCount">0</div>
+            <div class="stat-label">Sessions completed</div>
+            <div class="stat-value" id="pomodoroTodayMinutes">0</div>
+            <div class="stat-label">Minutes focused</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-label">Today's sessions</h2>
+          <ul id="pomodoroHistoryList" class="pomodoro-history-list"></ul>
+        </div>
+      </section>
+
+      <!-- ================= LIBRARY ================= -->
+      <section id="page-library" class="page hidden">
+        <h1 class="page-title">Library</h1>
+
+        <div class="card note-form-card">
+          <h2 class="card-label">Add item</h2>
+          <div class="note-form">
+            <select id="libraryCategoryInput">
+              <option value="Lecture Note">Lecture Note</option>
+              <option value="Website">Useful Website</option>
+              <option value="Research Paper">Research Paper</option>
+              <option value="Image/Diagram">Image/Diagram</option>
+              <option value="Project Idea">Project Idea</option>
+            </select>
+            <input id="libraryTitleInput" type="text" placeholder="Title" />
+            <input id="libraryUrlInput" type="text" placeholder="URL (optional)" />
+            <textarea id="libraryNotesInput" placeholder="Notes / description (optional)"></textarea>
+            <div class="note-form-actions">
+              <button id="attachFileBtn" class="btn">📎 Attach file</button>
+              <span id="attachedFileChip" class="attached-chip hidden"></span>
+              <button id="addLibraryItemBtn" class="btn btn-primary">+ Add</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="library-filter" id="libraryFilter"></div>
+
+        <div id="libraryGrid" class="note-grid"></div>
+      </section>
+
     </div>
   </div>
 
