@@ -26,6 +26,8 @@ const state = {
   libraryItems: [],
   libraryFilter: "All",
   pendingAttachmentPath: null,
+  allDeadlines: [],
+  dlEditingId: null,
 };
 
 const els = {};
@@ -44,6 +46,7 @@ async function init() {
     loadHabits(),
     loadQuotes(),
     loadDeadlines(),
+    loadAllDeadlines(),
     loadProjects(),
     loadPomodoroToday(),
     loadLibraryItems(),
@@ -57,6 +60,7 @@ async function init() {
   renderPomodoroToday();
   renderLibraryFilter();
   renderLibraryGrid();
+  renderDeadlinesPage();
 }
 
 function cacheEls() {
@@ -89,6 +93,18 @@ function cacheEls() {
   els.addDeadlineBtn = document.getElementById("addDeadlineBtn");
   els.calendarGrid = document.getElementById("calendarGrid");
   els.deadlineList = document.getElementById("deadlineList");
+
+  // Deadlines page
+  els.dlTitleInput = document.getElementById("dlTitleInput");
+  els.dlDateInput = document.getElementById("dlDateInput");
+  els.dlTypeInput = document.getElementById("dlTypeInput");
+  els.dlPriorityInput = document.getElementById("dlPriorityInput");
+  els.dlNotesInput = document.getElementById("dlNotesInput");
+  els.dlSaveBtn = document.getElementById("dlSaveBtn");
+  els.dlCancelEditBtn = document.getElementById("dlCancelEditBtn");
+  els.dlFormTitle = document.getElementById("dlFormTitle");
+  els.dlSummaryRow = document.getElementById("dlSummaryRow");
+  els.dlBoard = document.getElementById("dlBoard");
 
   // Milestones page
   els.projectNameInput = document.getElementById("projectNameInput");
@@ -162,6 +178,10 @@ async function loadQuotes() {
 }
 async function loadDeadlines() {
   state.deadlines = await window.api.deadlines.listForMonth(state.year, state.monthIndex + 1);
+}
+
+async function loadAllDeadlines() {
+  state.allDeadlines = await window.api.deadlines.list();
 }
 async function loadProjects() {
   state.projects = await window.api.projects.list();
@@ -727,6 +747,243 @@ function renderDeadlineList() {
     });
 }
 
+// ===== Deadlines page =====
+
+function dlDaysLeft(dueDateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDateStr + "T00:00:00");
+  return Math.round((due - today) / 86400000);
+}
+
+function renderDeadlinesPage() {
+  if (!els.dlBoard) return;
+
+  const all = state.allDeadlines;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Summary chips
+  const overdue = all.filter(d => !d.done && dlDaysLeft(d.due_date) < 0);
+  const thisWeek = all.filter(d => !d.done && dlDaysLeft(d.due_date) >= 0 && dlDaysLeft(d.due_date) <= 7);
+  const upcoming = all.filter(d => !d.done && dlDaysLeft(d.due_date) > 7);
+  const done = all.filter(d => d.done);
+
+  els.dlSummaryRow.innerHTML = "";
+  if (all.length === 0) {
+    const c = document.createElement("span");
+    c.className = "dl-chip";
+    c.textContent = "No deadlines yet";
+    els.dlSummaryRow.appendChild(c);
+  } else {
+    if (overdue.length) {
+      const c = document.createElement("span");
+      c.className = "dl-chip overdue";
+      c.textContent = `${overdue.length} overdue`;
+      els.dlSummaryRow.appendChild(c);
+    }
+    if (thisWeek.length) {
+      const c = document.createElement("span");
+      c.className = "dl-chip week";
+      c.textContent = `${thisWeek.length} due this week`;
+      els.dlSummaryRow.appendChild(c);
+    }
+    if (upcoming.length) {
+      const c = document.createElement("span");
+      c.className = "dl-chip ok";
+      c.textContent = `${upcoming.length} upcoming`;
+      els.dlSummaryRow.appendChild(c);
+    }
+    if (done.length) {
+      const c = document.createElement("span");
+      c.className = "dl-chip";
+      c.textContent = `${done.length} done`;
+      els.dlSummaryRow.appendChild(c);
+    }
+  }
+
+  // Build groups
+  const groups = [
+    { key: "overdue", label: "Overdue", items: overdue, titleClass: "overdue" },
+    { key: "week",    label: "Due this week", items: thisWeek, titleClass: "week" },
+    { key: "later",   label: "Coming up", items: upcoming, titleClass: "" },
+    { key: "done",    label: "Done", items: done, titleClass: "done" },
+  ];
+
+  els.dlBoard.innerHTML = "";
+
+  groups.forEach(group => {
+    if (group.items.length === 0) return;
+    const section = document.createElement("div");
+    section.className = "dl-group";
+
+    const heading = document.createElement("div");
+    heading.className = `dl-group-title ${group.titleClass}`;
+    heading.textContent = group.label;
+    section.appendChild(heading);
+
+    const ul = document.createElement("ul");
+    ul.className = "dl-list";
+
+    // Sort by due_date asc within each group
+    [...group.items]
+      .sort((a, b) => a.due_date.localeCompare(b.due_date))
+      .forEach(dl => {
+        ul.appendChild(buildDlItem(dl));
+      });
+
+    section.appendChild(ul);
+    els.dlBoard.appendChild(section);
+  });
+
+  if (all.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.style.textAlign = "center";
+    empty.style.marginTop = "32px";
+    empty.textContent = "No deadlines yet — add one above.";
+    els.dlBoard.appendChild(empty);
+  }
+}
+
+function buildDlItem(dl) {
+  const days = dlDaysLeft(dl.due_date);
+
+  const li = document.createElement("li");
+  li.className = `dl-item ${dl.priority}-priority${dl.done ? " done-item" : ""}`;
+
+  // Checkbox
+  const check = document.createElement("button");
+  check.className = `dl-check${dl.done ? " checked" : ""}`;
+  check.title = dl.done ? "Mark as not done" : "Mark as done";
+  check.textContent = dl.done ? "✓" : "";
+  check.addEventListener("click", async () => {
+    await window.api.deadlines.toggleDone(dl.id);
+    await loadAllDeadlines();
+    await loadDeadlines();
+    renderDeadlinesPage();
+    renderAll();
+  });
+  li.appendChild(check);
+
+  // Body
+  const body = document.createElement("div");
+  body.className = "dl-body";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "dl-title-row";
+
+  const titleEl = document.createElement("span");
+  titleEl.className = "dl-title";
+  titleEl.title = dl.title;
+  titleEl.textContent = dl.title;
+  titleRow.appendChild(titleEl);
+
+  if (dl.type) {
+    const badge = document.createElement("span");
+    badge.className = `dl-badge type-${dl.type}`;
+    badge.textContent = dl.type;
+    titleRow.appendChild(badge);
+  }
+
+  const dot = document.createElement("span");
+  dot.className = `dl-priority-dot ${dl.priority}`;
+  dot.title = `${dl.priority.charAt(0).toUpperCase() + dl.priority.slice(1)} priority`;
+  titleRow.appendChild(dot);
+
+  body.appendChild(titleRow);
+
+  const meta = document.createElement("div");
+  meta.className = "dl-meta";
+
+  const dateSpan = document.createElement("span");
+  dateSpan.textContent = dl.due_date;
+  meta.appendChild(dateSpan);
+
+  const countdown = document.createElement("span");
+  countdown.className = "dl-countdown";
+  if (dl.done) {
+    countdown.textContent = "✓ completed";
+  } else if (days < 0) {
+    countdown.className += " overdue";
+    countdown.textContent = `${Math.abs(days)} day${Math.abs(days) !== 1 ? "s" : ""} overdue`;
+  } else if (days === 0) {
+    countdown.className += " overdue";
+    countdown.textContent = "Due today!";
+  } else if (days <= 3) {
+    countdown.className += " soon";
+    countdown.textContent = `${days} day${days !== 1 ? "s" : ""} left`;
+  } else {
+    countdown.textContent = `${days} days left`;
+  }
+  meta.appendChild(countdown);
+  body.appendChild(meta);
+
+  if (dl.notes && dl.notes.trim()) {
+    const notes = document.createElement("div");
+    notes.className = "dl-notes";
+    notes.textContent = dl.notes;
+    body.appendChild(notes);
+  }
+
+  li.appendChild(body);
+
+  // Actions
+  const actions = document.createElement("div");
+  actions.className = "dl-actions";
+
+  const editBtn = document.createElement("button");
+  editBtn.textContent = "✏";
+  editBtn.title = "Edit";
+  editBtn.addEventListener("click", () => dlStartEdit(dl));
+  actions.appendChild(editBtn);
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "dl-del-btn";
+  delBtn.textContent = "✕";
+  delBtn.title = "Delete";
+  delBtn.addEventListener("click", async () => {
+    if (!confirm(`Delete "${dl.title}"?`)) return;
+    await window.api.deadlines.remove(dl.id);
+    if (state.dlEditingId === dl.id) dlCancelEdit();
+    await loadAllDeadlines();
+    await loadDeadlines();
+    renderDeadlinesPage();
+    renderAll();
+  });
+  actions.appendChild(delBtn);
+
+  li.appendChild(actions);
+  return li;
+}
+
+function dlStartEdit(dl) {
+  state.dlEditingId = dl.id;
+  els.dlTitleInput.value = dl.title;
+  els.dlDateInput.value = dl.due_date;
+  els.dlTypeInput.value = dl.type || "";
+  els.dlPriorityInput.value = dl.priority || "medium";
+  els.dlNotesInput.value = dl.notes || "";
+  els.dlFormTitle.textContent = "Edit deadline";
+  els.dlSaveBtn.textContent = "Save changes";
+  els.dlCancelEditBtn.classList.remove("hidden");
+  els.dlTitleInput.focus();
+  // Scroll form into view
+  els.dlFormTitle.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function dlCancelEdit() {
+  state.dlEditingId = null;
+  els.dlTitleInput.value = "";
+  els.dlDateInput.value = "";
+  els.dlTypeInput.value = "";
+  els.dlPriorityInput.value = "medium";
+  els.dlNotesInput.value = "";
+  els.dlFormTitle.textContent = "Add deadline";
+  els.dlSaveBtn.textContent = "+ Add deadline";
+  els.dlCancelEditBtn.classList.add("hidden");
+}
+
 function showToast(message) {
   const toast = document.createElement("div");
   toast.className = "toast";
@@ -1189,6 +1446,44 @@ function attachEvents() {
 
   window.addEventListener("resize", () => {
     if (state.page === "habits") renderDynamicsChart(computeStats().monthlyDynamics);
+  });
+
+  // ===== Deadlines page events =====
+  els.dlSaveBtn.addEventListener("click", async () => {
+    const title = els.dlTitleInput.value.trim();
+    const due = els.dlDateInput.value;
+    if (!title || !due) {
+      showToast("Please enter a title and due date.");
+      return;
+    }
+    const type = els.dlTypeInput.value;
+    const priority = els.dlPriorityInput.value;
+    const notes = els.dlNotesInput.value.trim();
+
+    if (state.dlEditingId !== null) {
+      await window.api.deadlines.update(state.dlEditingId, title, due, type, notes, priority);
+      dlCancelEdit();
+    } else {
+      await window.api.deadlines.add(title, due, type, notes, priority);
+      els.dlTitleInput.value = "";
+      els.dlDateInput.value = "";
+      els.dlTypeInput.value = "";
+      els.dlPriorityInput.value = "medium";
+      els.dlNotesInput.value = "";
+    }
+    await loadAllDeadlines();
+    await loadDeadlines();
+    renderDeadlinesPage();
+    renderAll();
+  });
+
+  els.dlCancelEditBtn.addEventListener("click", () => {
+    dlCancelEdit();
+  });
+
+  // Allow Enter key to submit form from title input
+  els.dlTitleInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") els.dlSaveBtn.click();
   });
 }
 

@@ -60,9 +60,13 @@ ipcMain.handle("quotes:remove", (_e, quoteId) => db.removeQuote(quoteId));
 // ---- IPC: deadlines ----
 ipcMain.handle("deadlines:list", () => db.listDeadlines());
 ipcMain.handle("deadlines:listForMonth", (_e, year, month) => db.listDeadlinesForMonth(year, month));
-ipcMain.handle("deadlines:add", (_e, title, dueDate, type, notes) =>
-  db.addDeadline(title, dueDate, type, notes)
+ipcMain.handle("deadlines:add", (_e, title, dueDate, type, notes, priority) =>
+  db.addDeadline(title, dueDate, type, notes, priority)
 );
+ipcMain.handle("deadlines:update", (_e, id, title, dueDate, type, notes, priority) =>
+  db.updateDeadline(id, title, dueDate, type, notes, priority)
+);
+ipcMain.handle("deadlines:toggleDone", (_e, id) => db.toggleDeadlineDone(id));
 ipcMain.handle("deadlines:remove", (_e, id) => db.removeDeadline(id));
 
 // ---- IPC: projects & milestones ----

@@ -13,6 +13,7 @@
       <button class="nav-btn active" data-page="habits">Habits</button>
       <button class="nav-btn" data-page="milestones">Milestones</button>
       <button class="nav-btn" data-page="pomodoro">Pomodoro</button>
+      <button class="nav-btn" data-page="deadlines">Deadlines</button>
       <button class="nav-btn" data-page="library">Library</button>
     </nav>
 
@@ -168,6 +169,43 @@
           <h2 class="card-label">Today's sessions</h2>
           <ul id="pomodoroHistoryList" class="pomodoro-history-list"></ul>
         </div>
+      </section>
+
+      <!-- ================= DEADLINES ================= -->
+      <section id="page-deadlines" class="page hidden">
+        <h1 class="page-title">Deadlines</h1>
+
+        <div class="card dl-form-card">
+          <h2 class="card-label" id="dlFormTitle">Add deadline</h2>
+          <div class="dl-rich-form">
+            <input id="dlTitleInput" type="text" placeholder="Title (e.g. Physics midterm, CS project)" />
+            <div class="dl-form-row">
+              <input id="dlDateInput" type="date" />
+              <select id="dlTypeInput">
+                <option value="">General</option>
+                <option value="Assignment">Assignment</option>
+                <option value="Exam">Exam</option>
+                <option value="Project">Project</option>
+                <option value="Competition">Competition</option>
+                <option value="Other">Other</option>
+              </select>
+              <select id="dlPriorityInput">
+                <option value="low">Low priority</option>
+                <option value="medium" selected>Medium priority</option>
+                <option value="high">High priority</option>
+              </select>
+            </div>
+            <textarea id="dlNotesInput" placeholder="Notes (optional)"></textarea>
+            <div class="dl-form-actions">
+              <button id="dlCancelEditBtn" class="btn hidden">Cancel</button>
+              <button id="dlSaveBtn" class="btn btn-primary">+ Add deadline</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="dl-summary-row" id="dlSummaryRow"></div>
+
+        <div id="dlBoard" class="dl-board"></div>
       </section>
 
       <!-- ================= LIBRARY ================= -->

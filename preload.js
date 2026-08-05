@@ -17,8 +17,11 @@ contextBridge.exposeInMainWorld("api", {
   deadlines: {
     list: () => ipcRenderer.invoke("deadlines:list"),
     listForMonth: (year, month) => ipcRenderer.invoke("deadlines:listForMonth", year, month),
-    add: (title, dueDate, type, notes) =>
-      ipcRenderer.invoke("deadlines:add", title, dueDate, type, notes),
+    add: (title, dueDate, type, notes, priority) =>
+      ipcRenderer.invoke("deadlines:add", title, dueDate, type, notes, priority),
+    update: (id, title, dueDate, type, notes, priority) =>
+      ipcRenderer.invoke("deadlines:update", id, title, dueDate, type, notes, priority),
+    toggleDone: (id) => ipcRenderer.invoke("deadlines:toggleDone", id),
     remove: (id) => ipcRenderer.invoke("deadlines:remove", id),
   },
   projects: {

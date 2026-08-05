@@ -504,3 +504,150 @@ tbody tr { border-top: 1px solid var(--border); }
 .note-link { font-size: 12px; color: var(--blue); word-break: break-all; }
 .note-thumb { width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px; cursor: pointer; }
 .note-remove { align-self: flex-start; font-size: 11px; margin-top: auto; background: none; border: none; color: var(--red); cursor: pointer; }
+
+/* ===== Deadlines page ===== */
+.dl-form-card { margin-bottom: 16px; }
+.dl-rich-form { display: flex; flex-direction: column; gap: 10px; }
+.dl-rich-form input[type="text"],
+.dl-rich-form input[type="date"],
+.dl-rich-form select,
+.dl-rich-form textarea {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  font-family: inherit;
+  width: 100%;
+}
+.dl-rich-form textarea { min-height: 56px; resize: vertical; }
+.dl-form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.dl-form-row input, .dl-form-row select { flex: 1; min-width: 120px; width: auto; }
+.dl-form-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Summary chips */
+.dl-summary-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.dl-chip {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--border);
+  color: var(--text-muted);
+}
+.dl-chip.overdue { background: #fee2e2; color: var(--red); }
+.dl-chip.week { background: #fef3c7; color: var(--amber); }
+.dl-chip.ok { background: var(--green-bg); color: var(--green); }
+.shell.dark .dl-chip.overdue { background: rgba(220,38,38,0.2); }
+.shell.dark .dl-chip.week { background: rgba(217,119,6,0.2); }
+
+/* Board groups */
+.dl-board { display: flex; flex-direction: column; gap: 24px; }
+.dl-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 10px 2px;
+}
+.dl-group-title.overdue { color: var(--red); }
+.dl-group-title.week { color: var(--amber); }
+.dl-group-title.done { color: var(--text-muted); opacity: 0.7; }
+
+.dl-list { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+
+/* Individual deadline card */
+.dl-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: opacity 0.15s;
+}
+.dl-item.done-item { opacity: 0.5; }
+.dl-item.high-priority { border-left: 3px solid var(--red); }
+.dl-item.medium-priority { border-left: 3px solid var(--amber); }
+.dl-item.low-priority { border-left: 3px solid var(--green); }
+
+.dl-check {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  color: transparent;
+  transition: background 0.12s, border-color 0.12s;
+  margin-top: 1px;
+}
+.dl-check:hover { border-color: var(--green); }
+.dl-check.checked { background: var(--green); border-color: var(--green); color: #fff; }
+
+.dl-body { flex: 1; min-width: 0; }
+.dl-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
+.dl-title {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 340px;
+}
+.dl-item.done-item .dl-title { text-decoration: line-through; }
+.dl-badge {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--border);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.dl-badge.type-Exam { background: #ede9fe; color: #7c3aed; }
+.dl-badge.type-Assignment { background: #dbeafe; color: var(--blue); }
+.dl-badge.type-Project { background: #fef3c7; color: var(--amber); }
+.dl-badge.type-Competition { background: #fce7f3; color: #be185d; }
+.dl-badge.type-Other, .dl-badge.type- { background: var(--border); color: var(--text-muted); }
+.shell.dark .dl-badge.type-Exam { background: rgba(124,58,237,0.2); }
+.shell.dark .dl-badge.type-Assignment { background: rgba(37,99,235,0.2); }
+.shell.dark .dl-badge.type-Project { background: rgba(217,119,6,0.2); }
+.shell.dark .dl-badge.type-Competition { background: rgba(190,24,93,0.2); }
+
+.dl-priority-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.dl-priority-dot.high { background: var(--red); }
+.dl-priority-dot.medium { background: var(--amber); }
+.dl-priority-dot.low { background: var(--green); }
+
+.dl-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+.dl-countdown { font-weight: 600; }
+.dl-countdown.overdue { color: var(--red); }
+.dl-countdown.soon { color: var(--amber); }
+.dl-notes { font-size: 11px; color: var(--text-muted); margin-top: 4px; white-space: pre-wrap; }
+
+.dl-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.dl-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: color 0.1s;
+}
+.dl-actions button:hover { color: var(--text-main); }
+.dl-actions .dl-del-btn:hover { color: var(--red); }

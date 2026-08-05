@@ -42,6 +42,8 @@ function init() {
       due_date TEXT NOT NULL,
       type TEXT DEFAULT '',
       notes TEXT DEFAULT '',
+      priority TEXT NOT NULL DEFAULT 'medium',
+      done INTEGER NOT NULL DEFAULT 0,
       notified INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
@@ -84,6 +86,15 @@ function init() {
       created_at TEXT NOT NULL
     );
   `);
+
+  // Migrate existing deadlines table if it's missing the new columns
+  const dlCols = db.prepare("PRAGMA table_info(deadlines)").all().map(c => c.name);
+  if (!dlCols.includes("priority")) {
+    db.exec("ALTER TABLE deadlines ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium'");
+  }
+  if (!dlCols.includes("done")) {
+    db.exec("ALTER TABLE deadlines ADD COLUMN done INTEGER NOT NULL DEFAULT 0");
+  }
 
   const quoteCount = db.prepare("SELECT COUNT(*) AS c FROM quotes").get().c;
   if (quoteCount === 0) {
@@ -303,13 +314,21 @@ function listDeadlinesForMonth(year, month) {
     .prepare("SELECT * FROM deadlines WHERE due_date LIKE ? ORDER BY due_date ASC")
     .all(`${prefix}%`);
 }
-function addDeadline(title, dueDate, type, notes) {
+function addDeadline(title, dueDate, type, notes, priority) {
   const info = db
     .prepare(
-      "INSERT INTO deadlines (title, due_date, type, notes, notified, created_at) VALUES (?, ?, ?, ?, 0, ?)"
+      "INSERT INTO deadlines (title, due_date, type, notes, priority, done, notified, created_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)"
     )
-    .run(title, dueDate, type || "", notes || "", formatDate(new Date()));
+    .run(title, dueDate, type || "", notes || "", priority || "medium", formatDate(new Date()));
   return info.lastInsertRowid;
+}
+function updateDeadline(id, title, dueDate, type, notes, priority) {
+  db.prepare(
+    "UPDATE deadlines SET title = ?, due_date = ?, type = ?, notes = ?, priority = ? WHERE id = ?"
+  ).run(title, dueDate, type || "", notes || "", priority || "medium", id);
+}
+function toggleDeadlineDone(id) {
+  db.prepare("UPDATE deadlines SET done = 1 - done WHERE id = ?").run(id);
 }
 function removeDeadline(id) {
   db.prepare("DELETE FROM deadlines WHERE id = ?").run(id);
@@ -440,6 +459,8 @@ module.exports = {
   listDeadlines,
   listDeadlinesForMonth,
   addDeadline,
+  updateDeadline,
+  toggleDeadlineDone,
   removeDeadline,
   getDeadlinesDueSoon,
   markDeadlineNotified,
