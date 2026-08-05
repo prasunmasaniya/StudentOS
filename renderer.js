@@ -28,6 +28,15 @@ const state = {
   pendingAttachmentPath: null,
   allDeadlines: [],
   dlEditingId: null,
+  notes: [],
+  activeNoteId: null,
+  noteSearchQuery: "",
+  noteSaveDebounce: null,
+  timer: {
+    mode: "countdown",
+    countdown: { running: false, remainingSeconds: 300, totalSeconds: 300, intervalId: null },
+    stopwatch: { running: false, elapsedMs: 0, startedAt: null, intervalId: null, laps: [] },
+  },
 };
 
 const els = {};
@@ -51,6 +60,7 @@ async function init() {
     loadPomodoroToday(),
     loadLibraryItems(),
     loadPomodoroSettings(),
+    loadNotes(),
   ]);
 
   attachEvents();
@@ -61,6 +71,10 @@ async function init() {
   renderLibraryFilter();
   renderLibraryGrid();
   renderDeadlinesPage();
+  renderNotesList();
+  renderCountdownDisplay();
+  renderStopwatchDisplay();
+  startClock();
 }
 
 function cacheEls() {
@@ -124,6 +138,38 @@ function cacheEls() {
   els.pomodoroTodayCount = document.getElementById("pomodoroTodayCount");
   els.pomodoroTodayMinutes = document.getElementById("pomodoroTodayMinutes");
   els.pomodoroHistoryList = document.getElementById("pomodoroHistoryList");
+
+  // Notes page
+  els.noteSearchInput = document.getElementById("noteSearchInput");
+  els.newNoteBtn = document.getElementById("newNoteBtn");
+  els.notesList = document.getElementById("notesList");
+  els.noteEditorEmpty = document.getElementById("noteEditorEmpty");
+  els.noteEditor = document.getElementById("noteEditor");
+  els.noteTitleInput = document.getElementById("noteTitleInput");
+  els.noteLastEdited = document.getElementById("noteLastEdited");
+  els.deleteNoteBtn = document.getElementById("deleteNoteBtn");
+  els.noteContentInput = document.getElementById("noteContentInput");
+
+  // Timer page
+  els.clockTime = document.getElementById("clockTime");
+  els.clockDate = document.getElementById("clockDate");
+  els.countdownTabBtn = document.getElementById("countdownTabBtn");
+  els.stopwatchTabBtn = document.getElementById("stopwatchTabBtn");
+  els.countdownPanel = document.getElementById("countdownPanel");
+  els.stopwatchPanel = document.getElementById("stopwatchPanel");
+  els.countdownDisplay = document.getElementById("countdownDisplay");
+  els.countdownHoursInput = document.getElementById("countdownHoursInput");
+  els.countdownMinutesInput = document.getElementById("countdownMinutesInput");
+  els.countdownSecondsInput = document.getElementById("countdownSecondsInput");
+  els.countdownStartBtn = document.getElementById("countdownStartBtn");
+  els.countdownPauseBtn = document.getElementById("countdownPauseBtn");
+  els.countdownResetBtn = document.getElementById("countdownResetBtn");
+  els.stopwatchDisplay = document.getElementById("stopwatchDisplay");
+  els.stopwatchStartBtn = document.getElementById("stopwatchStartBtn");
+  els.stopwatchPauseBtn = document.getElementById("stopwatchPauseBtn");
+  els.stopwatchLapBtn = document.getElementById("stopwatchLapBtn");
+  els.stopwatchResetBtn = document.getElementById("stopwatchResetBtn");
+  els.stopwatchLaps = document.getElementById("stopwatchLaps");
 
   // Library page
   els.libraryCategoryInput = document.getElementById("libraryCategoryInput");
@@ -1302,6 +1348,295 @@ async function loadExampleHabits() {
   renderAll();
 }
 
+// ================= Notes page =================
+
+async function loadNotes() {
+  state.notes = await window.api.notes.list();
+}
+
+function noteSnippet(content) {
+  const flat = (content || "").replace(/\s+/g, " ").trim();
+  return flat.length > 60 ? flat.slice(0, 60) + "…" : flat;
+}
+
+function noteRelativeTime(isoString) {
+  const then = new Date(isoString);
+  const diffMs = Date.now() - then.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return then.toLocaleDateString();
+}
+
+function filteredNotes() {
+  const q = state.noteSearchQuery.trim().toLowerCase();
+  if (!q) return state.notes;
+  return state.notes.filter(
+    (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+  );
+}
+
+function renderNotesList() {
+  if (!els.notesList) return;
+  els.notesList.innerHTML = "";
+  const notes = filteredNotes();
+
+  if (notes.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "notes-empty-list";
+    empty.textContent = state.notes.length === 0 ? "No notes yet." : "No notes match your search.";
+    els.notesList.appendChild(empty);
+    return;
+  }
+
+  notes.forEach((note) => {
+    const li = document.createElement("li");
+    li.className = `note-list-item${note.id === state.activeNoteId ? " active" : ""}`;
+
+    const title = document.createElement("div");
+    title.className = "note-list-item-title";
+    title.textContent = note.title.trim() || "Untitled note";
+    li.appendChild(title);
+
+    if (note.content.trim()) {
+      const snippet = document.createElement("div");
+      snippet.className = "note-list-item-snippet";
+      snippet.textContent = noteSnippet(note.content);
+      li.appendChild(snippet);
+    }
+
+    const time = document.createElement("div");
+    time.className = "note-list-item-time";
+    time.textContent = noteRelativeTime(note.updated_at);
+    li.appendChild(time);
+
+    li.addEventListener("click", () => selectNote(note.id));
+    els.notesList.appendChild(li);
+  });
+}
+
+function selectNote(id) {
+  state.activeNoteId = id;
+  const note = state.notes.find((n) => n.id === id);
+  if (!note) return;
+
+  els.noteEditorEmpty.classList.add("hidden");
+  els.noteEditor.classList.remove("hidden");
+  els.noteTitleInput.value = note.title;
+  els.noteContentInput.value = note.content;
+  els.noteLastEdited.textContent = `Edited ${noteRelativeTime(note.updated_at)}`;
+
+  renderNotesList();
+}
+
+async function createNewNote() {
+  const id = await window.api.notes.add("", "");
+  await loadNotes();
+  renderNotesList();
+  selectNote(id);
+  els.noteTitleInput.focus();
+}
+
+function scheduleNoteAutosave() {
+  if (state.activeNoteId === null) return;
+  clearTimeout(state.noteSaveDebounce);
+  state.noteSaveDebounce = setTimeout(async () => {
+    const title = els.noteTitleInput.value;
+    const content = els.noteContentInput.value;
+    await window.api.notes.update(state.activeNoteId, title, content);
+    await loadNotes();
+    els.noteLastEdited.textContent = "Edited just now";
+    renderNotesList();
+  }, 500);
+}
+
+async function deleteActiveNote() {
+  if (state.activeNoteId === null) return;
+  const note = state.notes.find((n) => n.id === state.activeNoteId);
+  if (note && !confirm(`Delete "${note.title.trim() || "Untitled note"}"?`)) return;
+
+  await window.api.notes.remove(state.activeNoteId);
+  state.activeNoteId = null;
+  await loadNotes();
+  renderNotesList();
+  els.noteEditor.classList.add("hidden");
+  els.noteEditorEmpty.classList.remove("hidden");
+}
+
+// ================= Timer page =================
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function startClock() {
+  const tick = () => {
+    const now = new Date();
+    els.clockTime.textContent = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+    els.clockDate.textContent = now.toLocaleDateString(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+function formatHMS(totalSeconds) {
+  const s = Math.max(0, totalSeconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${pad2(h)}:${pad2(m)}:${pad2(sec)}`;
+}
+
+function setTimerMode(mode) {
+  state.timer.mode = mode;
+  els.countdownTabBtn.classList.toggle("active", mode === "countdown");
+  els.stopwatchTabBtn.classList.toggle("active", mode === "stopwatch");
+  els.countdownPanel.classList.toggle("hidden", mode !== "countdown");
+  els.stopwatchPanel.classList.toggle("hidden", mode !== "stopwatch");
+}
+
+function renderCountdownDisplay() {
+  const cd = state.timer.countdown;
+  els.countdownDisplay.textContent = formatHMS(cd.remainingSeconds);
+  els.countdownDisplay.classList.toggle("timer-done", !cd.running && cd.remainingSeconds === 0);
+}
+
+function startCountdown() {
+  const cd = state.timer.countdown;
+  if (cd.running) return;
+
+  if (cd.remainingSeconds === 0) {
+    const h = Number(els.countdownHoursInput.value) || 0;
+    const m = Number(els.countdownMinutesInput.value) || 0;
+    const s = Number(els.countdownSecondsInput.value) || 0;
+    const total = h * 3600 + m * 60 + s;
+    if (total <= 0) return;
+    cd.totalSeconds = total;
+    cd.remainingSeconds = total;
+  }
+
+  cd.running = true;
+  els.countdownStartBtn.classList.add("hidden");
+  els.countdownPauseBtn.classList.remove("hidden");
+
+  cd.intervalId = setInterval(() => {
+    cd.remainingSeconds -= 1;
+    if (cd.remainingSeconds <= 0) {
+      cd.remainingSeconds = 0;
+      pauseCountdown();
+      renderCountdownDisplay();
+      window.api.notify.show("Timer done!", "Your countdown timer has finished.");
+      showToast("⏰ Countdown finished!");
+      return;
+    }
+    renderCountdownDisplay();
+  }, 1000);
+}
+
+function pauseCountdown() {
+  const cd = state.timer.countdown;
+  cd.running = false;
+  clearInterval(cd.intervalId);
+  cd.intervalId = null;
+  els.countdownStartBtn.classList.remove("hidden");
+  els.countdownPauseBtn.classList.add("hidden");
+}
+
+function resetCountdown() {
+  const cd = state.timer.countdown;
+  pauseCountdown();
+  cd.remainingSeconds = 0;
+  cd.totalSeconds = 0;
+  renderCountdownDisplay();
+}
+
+function formatStopwatch(ms) {
+  const totalCentis = Math.floor(ms / 100);
+  const s = Math.floor(totalCentis / 10);
+  const tenths = totalCentis % 10;
+  return `${formatHMS(s)}.${tenths}`;
+}
+
+function renderStopwatchDisplay() {
+  const sw = state.timer.stopwatch;
+  els.stopwatchDisplay.textContent = formatStopwatch(sw.elapsedMs);
+}
+
+function stopwatchCurrentElapsed() {
+  const sw = state.timer.stopwatch;
+  return sw.elapsedMs + (sw.running ? Date.now() - sw.startedAt : 0);
+}
+
+function startStopwatch() {
+  const sw = state.timer.stopwatch;
+  if (sw.running) return;
+  sw.running = true;
+  sw.startedAt = Date.now();
+  els.stopwatchStartBtn.classList.add("hidden");
+  els.stopwatchPauseBtn.classList.remove("hidden");
+
+  sw.intervalId = setInterval(() => {
+    els.stopwatchDisplay.textContent = formatStopwatch(stopwatchCurrentElapsed());
+  }, 100);
+}
+
+function pauseStopwatch() {
+  const sw = state.timer.stopwatch;
+  if (!sw.running) return;
+  sw.elapsedMs = stopwatchCurrentElapsed();
+  sw.running = false;
+  clearInterval(sw.intervalId);
+  sw.intervalId = null;
+  els.stopwatchStartBtn.classList.remove("hidden");
+  els.stopwatchPauseBtn.classList.add("hidden");
+  renderStopwatchDisplay();
+}
+
+function resetStopwatch() {
+  const sw = state.timer.stopwatch;
+  clearInterval(sw.intervalId);
+  sw.running = false;
+  sw.intervalId = null;
+  sw.elapsedMs = 0;
+  sw.startedAt = null;
+  sw.laps = [];
+  els.stopwatchStartBtn.classList.remove("hidden");
+  els.stopwatchPauseBtn.classList.add("hidden");
+  renderStopwatchDisplay();
+  renderLaps();
+}
+
+function addLap() {
+  const sw = state.timer.stopwatch;
+  if (!sw.running) return;
+  sw.laps.unshift(stopwatchCurrentElapsed());
+  renderLaps();
+}
+
+function renderLaps() {
+  const sw = state.timer.stopwatch;
+  els.stopwatchLaps.innerHTML = "";
+  sw.laps.forEach((ms, idx) => {
+    const li = document.createElement("li");
+    const lapNum = document.createElement("span");
+    lapNum.textContent = `Lap ${sw.laps.length - idx}`;
+    const lapTime = document.createElement("span");
+    lapTime.textContent = formatStopwatch(ms);
+    li.appendChild(lapNum);
+    li.appendChild(lapTime);
+    els.stopwatchLaps.appendChild(li);
+  });
+}
+
 // ---------- events ----------
 function attachEvents() {
   document.querySelectorAll(".nav-btn").forEach((btn) => {
@@ -1485,6 +1820,32 @@ function attachEvents() {
   els.dlTitleInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") els.dlSaveBtn.click();
   });
+
+  // ===== Notes page events =====
+  els.newNoteBtn.addEventListener("click", () => createNewNote());
+
+  els.noteSearchInput.addEventListener("input", () => {
+    state.noteSearchQuery = els.noteSearchInput.value;
+    renderNotesList();
+  });
+
+  els.noteTitleInput.addEventListener("input", scheduleNoteAutosave);
+  els.noteContentInput.addEventListener("input", scheduleNoteAutosave);
+
+  els.deleteNoteBtn.addEventListener("click", () => deleteActiveNote());
+
+  // ===== Timer page events =====
+  els.countdownTabBtn.addEventListener("click", () => setTimerMode("countdown"));
+  els.stopwatchTabBtn.addEventListener("click", () => setTimerMode("stopwatch"));
+
+  els.countdownStartBtn.addEventListener("click", startCountdown);
+  els.countdownPauseBtn.addEventListener("click", pauseCountdown);
+  els.countdownResetBtn.addEventListener("click", resetCountdown);
+
+  els.stopwatchStartBtn.addEventListener("click", startStopwatch);
+  els.stopwatchPauseBtn.addEventListener("click", pauseStopwatch);
+  els.stopwatchResetBtn.addEventListener("click", resetStopwatch);
+  els.stopwatchLapBtn.addEventListener("click", addLap);
 }
 
 function setPage(page) {

@@ -85,6 +85,14 @@ function init() {
       notes TEXT DEFAULT '',
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   // Migrate existing deadlines table if it's missing the new columns
@@ -432,6 +440,31 @@ function removeLibraryItem(id) {
   db.prepare("DELETE FROM library_items WHERE id = ?").run(id);
 }
 
+// ---------- notes ----------
+function listNotes() {
+  return db.prepare("SELECT * FROM notes ORDER BY updated_at DESC").all();
+}
+function addNote(title, content) {
+  const now = new Date().toISOString();
+  const info = db
+    .prepare(
+      "INSERT INTO notes (title, content, created_at, updated_at) VALUES (?, ?, ?, ?)"
+    )
+    .run(title || "", content || "", now, now);
+  return info.lastInsertRowid;
+}
+function updateNote(id, title, content) {
+  db.prepare("UPDATE notes SET title = ?, content = ?, updated_at = ? WHERE id = ?").run(
+    title || "",
+    content || "",
+    new Date().toISOString(),
+    id
+  );
+}
+function removeNote(id) {
+  db.prepare("DELETE FROM notes WHERE id = ?").run(id);
+}
+
 // ---------- settings ----------
 function getSetting(key) {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key);
@@ -477,6 +510,10 @@ module.exports = {
   listLibraryItems,
   addLibraryItem,
   removeLibraryItem,
+  listNotes,
+  addNote,
+  updateNote,
+  removeNote,
   getSetting,
   setSetting,
 };

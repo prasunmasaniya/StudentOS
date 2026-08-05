@@ -48,6 +48,12 @@ contextBridge.exposeInMainWorld("api", {
     openFile: (filePath) => ipcRenderer.invoke("library:openFile", filePath),
     openLink: (url) => ipcRenderer.invoke("library:openLink", url),
   },
+  notes: {
+    list: () => ipcRenderer.invoke("notes:list"),
+    add: (title, content) => ipcRenderer.invoke("notes:add", title, content),
+    update: (id, title, content) => ipcRenderer.invoke("notes:update", id, title, content),
+    remove: (id) => ipcRenderer.invoke("notes:remove", id),
+  },
   notify: {
     show: (title, body) => ipcRenderer.invoke("notify:show", title, body),
   },

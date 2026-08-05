@@ -14,6 +14,8 @@
       <button class="nav-btn" data-page="milestones">Milestones</button>
       <button class="nav-btn" data-page="pomodoro">Pomodoro</button>
       <button class="nav-btn" data-page="deadlines">Deadlines</button>
+      <button class="nav-btn" data-page="notes">Notes</button>
+      <button class="nav-btn" data-page="timer">Timer</button>
       <button class="nav-btn" data-page="library">Library</button>
     </nav>
 
@@ -206,6 +208,75 @@
         <div class="dl-summary-row" id="dlSummaryRow"></div>
 
         <div id="dlBoard" class="dl-board"></div>
+      </section>
+
+      <!-- ================= NOTES ================= -->
+      <section id="page-notes" class="page hidden">
+        <h1 class="page-title">Notes</h1>
+
+        <div class="notes-layout">
+          <div class="notes-list-col">
+            <div class="notes-list-header">
+              <input id="noteSearchInput" type="text" placeholder="Search notes..." />
+              <button id="newNoteBtn" class="btn btn-primary" title="New note">+ New</button>
+            </div>
+            <ul id="notesList" class="notes-list"></ul>
+          </div>
+
+          <div class="notes-editor-col">
+            <div id="noteEditorEmpty" class="notes-empty-state">
+              <p class="muted">Select a note or create a new one.</p>
+            </div>
+            <div id="noteEditor" class="note-editor hidden">
+              <input id="noteTitleInput" type="text" class="note-title-input" placeholder="Title" />
+              <div class="note-editor-meta">
+                <span id="noteLastEdited" class="muted small"></span>
+                <button id="deleteNoteBtn" class="btn-icon-danger" title="Delete note">🗑 Delete</button>
+              </div>
+              <textarea id="noteContentInput" class="note-content-input" placeholder="Start typing..."></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TIMER ================= -->
+      <section id="page-timer" class="page hidden">
+        <h1 class="page-title">Timer</h1>
+
+        <div class="clock-card">
+          <div id="clockTime" class="clock-time">00:00:00</div>
+          <div id="clockDate" class="clock-date">—</div>
+        </div>
+
+        <div class="timer-tabs">
+          <button id="countdownTabBtn" class="tab-btn active">Countdown</button>
+          <button id="stopwatchTabBtn" class="tab-btn">Stopwatch</button>
+        </div>
+
+        <div id="countdownPanel" class="card timer-panel">
+          <div id="countdownDisplay" class="timer-display">00:05:00</div>
+          <div class="timer-inputs">
+            <label>Hours <input id="countdownHoursInput" type="number" min="0" max="23" value="0" /></label>
+            <label>Minutes <input id="countdownMinutesInput" type="number" min="0" max="59" value="5" /></label>
+            <label>Seconds <input id="countdownSecondsInput" type="number" min="0" max="59" value="0" /></label>
+          </div>
+          <div class="timer-controls">
+            <button id="countdownStartBtn" class="btn btn-primary">Start</button>
+            <button id="countdownPauseBtn" class="btn hidden">Pause</button>
+            <button id="countdownResetBtn" class="btn">Reset</button>
+          </div>
+        </div>
+
+        <div id="stopwatchPanel" class="card timer-panel hidden">
+          <div id="stopwatchDisplay" class="timer-display">00:00:00.0</div>
+          <div class="timer-controls">
+            <button id="stopwatchStartBtn" class="btn btn-primary">Start</button>
+            <button id="stopwatchPauseBtn" class="btn hidden">Pause</button>
+            <button id="stopwatchLapBtn" class="btn">Lap</button>
+            <button id="stopwatchResetBtn" class="btn">Reset</button>
+          </div>
+          <ul id="stopwatchLaps" class="lap-list"></ul>
+        </div>
       </section>
 
       <!-- ================= LIBRARY ================= -->

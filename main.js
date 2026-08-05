@@ -102,6 +102,12 @@ ipcMain.handle("library:pickFile", async () => {
 ipcMain.handle("library:openFile", (_e, filePath) => shell.openPath(filePath));
 ipcMain.handle("library:openLink", (_e, url) => shell.openExternal(url));
 
+// ---- IPC: notes ----
+ipcMain.handle("notes:list", () => db.listNotes());
+ipcMain.handle("notes:add", (_e, title, content) => db.addNote(title, content));
+ipcMain.handle("notes:update", (_e, id, title, content) => db.updateNote(id, title, content));
+ipcMain.handle("notes:remove", (_e, id) => db.removeNote(id));
+
 // ---- IPC: settings ----
 ipcMain.handle("settings:get", (_e, key) => db.getSetting(key));
 ipcMain.handle("settings:set", (_e, key, value) => db.setSetting(key, value));
