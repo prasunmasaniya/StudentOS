@@ -93,6 +93,22 @@ function init() {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS goals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      target INTEGER NOT NULL DEFAULT 1,
+      unit TEXT DEFAULT '',
+      current INTEGER NOT NULL DEFAULT 0,
+      due_date TEXT DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS achievements_unlocked (
+      achievement_id TEXT PRIMARY KEY,
+      unlocked_at TEXT NOT NULL
+    );
   `);
 
   // Migrate existing deadlines table if it's missing the new columns
@@ -465,6 +481,84 @@ function removeNote(id) {
   db.prepare("DELETE FROM notes WHERE id = ?").run(id);
 }
 
+// ---------- goals ----------
+function listGoals() {
+  return db
+    .prepare(
+      `SELECT *, (current >= target) AS done FROM goals
+       ORDER BY (current >= target) ASC, (due_date = '') ASC, due_date ASC, sort_order ASC, id DESC`
+    )
+    .all();
+}
+function addGoal(title, target, unit, dueDate) {
+  const maxOrder = db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM goals").get().m;
+  const info = db
+    .prepare(
+      "INSERT INTO goals (title, target, unit, current, due_date, sort_order, created_at) VALUES (?, ?, ?, 0, ?, ?, ?)"
+    )
+    .run(title, Math.max(1, target || 1), unit || "", dueDate || "", maxOrder + 1, formatDate(new Date()));
+  return info.lastInsertRowid;
+}
+function updateGoal(id, title, target, unit, dueDate) {
+  db.prepare("UPDATE goals SET title = ?, target = ?, unit = ?, due_date = ? WHERE id = ?").run(
+    title,
+    Math.max(1, target || 1),
+    unit || "",
+    dueDate || "",
+    id
+  );
+}
+function updateGoalProgress(id, current) {
+  const goal = db.prepare("SELECT target FROM goals WHERE id = ?").get(id);
+  if (!goal) return;
+  const clamped = Math.max(0, Math.min(current, goal.target));
+  db.prepare("UPDATE goals SET current = ? WHERE id = ?").run(clamped, id);
+}
+function removeGoal(id) {
+  db.prepare("DELETE FROM goals WHERE id = ?").run(id);
+}
+
+// ---------- achievements ----------
+// Raw counters the renderer compares against each achievement's threshold.
+function getAchievementStats() {
+  const habitsCreated = db.prepare("SELECT COUNT(*) AS c FROM habits").get().c;
+  const totalCheckIns = db.prepare("SELECT COUNT(*) AS c FROM habit_checks").get().c;
+
+  let longestStreakEver = 0;
+  const habitIds = db.prepare("SELECT id FROM habits").all().map((h) => h.id);
+  for (const id of habitIds) {
+    const { best } = computeStreaks(id);
+    if (best > longestStreakEver) longestStreakEver = best;
+  }
+
+  const milestonesDone = db
+    .prepare("SELECT COUNT(*) AS c FROM milestones WHERE status = 'done'")
+    .get().c;
+  const deadlinesDone = db.prepare("SELECT COUNT(*) AS c FROM deadlines WHERE done = 1").get().c;
+  const pomodoroSessionsTotal = db.prepare("SELECT COUNT(*) AS c FROM pomodoro_sessions").get().c;
+  const notesCreated = db.prepare("SELECT COUNT(*) AS c FROM notes").get().c;
+  const libraryItemsTotal = db.prepare("SELECT COUNT(*) AS c FROM library_items").get().c;
+
+  return {
+    habitsCreated,
+    totalCheckIns,
+    longestStreakEver,
+    milestonesDone,
+    deadlinesDone,
+    pomodoroSessionsTotal,
+    notesCreated,
+    libraryItemsTotal,
+  };
+}
+function listUnlockedAchievements() {
+  return db.prepare("SELECT * FROM achievements_unlocked").all();
+}
+function unlockAchievement(achievementId) {
+  db.prepare(
+    "INSERT OR IGNORE INTO achievements_unlocked (achievement_id, unlocked_at) VALUES (?, ?)"
+  ).run(achievementId, new Date().toISOString());
+}
+
 // ---------- settings ----------
 function getSetting(key) {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key);
@@ -514,6 +608,14 @@ module.exports = {
   addNote,
   updateNote,
   removeNote,
+  listGoals,
+  addGoal,
+  updateGoal,
+  updateGoalProgress,
+  removeGoal,
+  getAchievementStats,
+  listUnlockedAchievements,
+  unlockAchievement,
   getSetting,
   setSetting,
 };

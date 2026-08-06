@@ -37,7 +37,47 @@ const state = {
     countdown: { running: false, remainingSeconds: 300, totalSeconds: 300, intervalId: null },
     stopwatch: { running: false, elapsedMs: 0, startedAt: null, intervalId: null, laps: [] },
   },
+  gaTab: "goals",
+  goals: [],
+  goalEditingId: null,
+  achievementStats: null,
+  unlockedAchievementIds: [],
 };
+
+// Static achievement catalog — 8 categories x 3 tiers, checked against live stats from db.
+const ACHIEVEMENT_DEFS = [
+  { id: "habits-bronze", category: "Habits Created", statKey: "habitsCreated", threshold: 1, tier: "bronze", icon: "🌱", title: "First Steps", desc: "Create your first habit" },
+  { id: "habits-silver", category: "Habits Created", statKey: "habitsCreated", threshold: 5, tier: "silver", icon: "🌿", title: "Habit Builder", desc: "Create 5 habits" },
+  { id: "habits-gold", category: "Habits Created", statKey: "habitsCreated", threshold: 15, tier: "gold", icon: "🌳", title: "Habit Architect", desc: "Create 15 habits" },
+
+  { id: "streak-bronze", category: "Longest Streak", statKey: "longestStreakEver", threshold: 7, tier: "bronze", icon: "🔥", title: "On a Roll", desc: "Reach a 7-day streak" },
+  { id: "streak-silver", category: "Longest Streak", statKey: "longestStreakEver", threshold: 30, tier: "silver", icon: "🔥", title: "Unstoppable", desc: "Reach a 30-day streak" },
+  { id: "streak-gold", category: "Longest Streak", statKey: "longestStreakEver", threshold: 100, tier: "gold", icon: "🔥", title: "Iron Will", desc: "Reach a 100-day streak" },
+
+  { id: "checks-bronze", category: "Check-ins", statKey: "totalCheckIns", threshold: 25, tier: "bronze", icon: "✅", title: "Getting Started", desc: "Log 25 habit check-ins" },
+  { id: "checks-silver", category: "Check-ins", statKey: "totalCheckIns", threshold: 100, tier: "silver", icon: "✅", title: "Centurion", desc: "Log 100 habit check-ins" },
+  { id: "checks-gold", category: "Check-ins", statKey: "totalCheckIns", threshold: 500, tier: "gold", icon: "✅", title: "Habit Master", desc: "Log 500 habit check-ins" },
+
+  { id: "milestones-bronze", category: "Milestones", statKey: "milestonesDone", threshold: 1, tier: "bronze", icon: "🏁", title: "First Milestone", desc: "Complete a milestone" },
+  { id: "milestones-silver", category: "Milestones", statKey: "milestonesDone", threshold: 10, tier: "silver", icon: "🏁", title: "Project Pro", desc: "Complete 10 milestones" },
+  { id: "milestones-gold", category: "Milestones", statKey: "milestonesDone", threshold: 25, tier: "gold", icon: "🏁", title: "Milestone Master", desc: "Complete 25 milestones" },
+
+  { id: "deadlines-bronze", category: "Deadlines", statKey: "deadlinesDone", threshold: 1, tier: "bronze", icon: "📅", title: "Beat the Clock", desc: "Complete a deadline" },
+  { id: "deadlines-silver", category: "Deadlines", statKey: "deadlinesDone", threshold: 10, tier: "silver", icon: "📅", title: "Deadline Slayer", desc: "Complete 10 deadlines" },
+  { id: "deadlines-gold", category: "Deadlines", statKey: "deadlinesDone", threshold: 25, tier: "gold", icon: "📅", title: "Never Late", desc: "Complete 25 deadlines" },
+
+  { id: "pomodoro-bronze", category: "Focus Sessions", statKey: "pomodoroSessionsTotal", threshold: 5, tier: "bronze", icon: "🍅", title: "Focus Novice", desc: "Complete 5 pomodoro sessions" },
+  { id: "pomodoro-silver", category: "Focus Sessions", statKey: "pomodoroSessionsTotal", threshold: 25, tier: "silver", icon: "🍅", title: "Deep Work", desc: "Complete 25 pomodoro sessions" },
+  { id: "pomodoro-gold", category: "Focus Sessions", statKey: "pomodoroSessionsTotal", threshold: 100, tier: "gold", icon: "🍅", title: "Flow State", desc: "Complete 100 pomodoro sessions" },
+
+  { id: "notes-bronze", category: "Notes", statKey: "notesCreated", threshold: 1, tier: "bronze", icon: "📝", title: "Jotted Down", desc: "Create your first note" },
+  { id: "notes-silver", category: "Notes", statKey: "notesCreated", threshold: 10, tier: "silver", icon: "📝", title: "Note Taker", desc: "Create 10 notes" },
+  { id: "notes-gold", category: "Notes", statKey: "notesCreated", threshold: 30, tier: "gold", icon: "📝", title: "Archivist", desc: "Create 30 notes" },
+
+  { id: "library-bronze", category: "Library", statKey: "libraryItemsTotal", threshold: 1, tier: "bronze", icon: "📚", title: "Collector", desc: "Add your first library item" },
+  { id: "library-silver", category: "Library", statKey: "libraryItemsTotal", threshold: 10, tier: "silver", icon: "📚", title: "Curator", desc: "Add 10 library items" },
+  { id: "library-gold", category: "Library", statKey: "libraryItemsTotal", threshold: 30, tier: "gold", icon: "📚", title: "Librarian", desc: "Add 30 library items" },
+];
 
 const els = {};
 
@@ -61,6 +101,8 @@ async function init() {
     loadLibraryItems(),
     loadPomodoroSettings(),
     loadNotes(),
+    loadGoals(),
+    loadAchievementData(),
   ]);
 
   attachEvents();
@@ -75,6 +117,8 @@ async function init() {
   renderCountdownDisplay();
   renderStopwatchDisplay();
   startClock();
+  renderGoalsList();
+  await refreshAchievements();
 }
 
 function cacheEls() {
@@ -170,6 +214,22 @@ function cacheEls() {
   els.stopwatchLapBtn = document.getElementById("stopwatchLapBtn");
   els.stopwatchResetBtn = document.getElementById("stopwatchResetBtn");
   els.stopwatchLaps = document.getElementById("stopwatchLaps");
+
+  // Goals & Achievements page
+  els.goalsTabBtn = document.getElementById("goalsTabBtn");
+  els.achievementsTabBtn = document.getElementById("achievementsTabBtn");
+  els.goalsPanel = document.getElementById("goalsPanel");
+  els.achievementsPanel = document.getElementById("achievementsPanel");
+  els.goalFormTitle = document.getElementById("goalFormTitle");
+  els.goalTitleInput = document.getElementById("goalTitleInput");
+  els.goalTargetInput = document.getElementById("goalTargetInput");
+  els.goalUnitInput = document.getElementById("goalUnitInput");
+  els.goalDueDateInput = document.getElementById("goalDueDateInput");
+  els.goalSaveBtn = document.getElementById("goalSaveBtn");
+  els.goalCancelEditBtn = document.getElementById("goalCancelEditBtn");
+  els.goalsList = document.getElementById("goalsList");
+  els.achievementsSummary = document.getElementById("achievementsSummary");
+  els.achievementsGrid = document.getElementById("achievementsGrid");
 
   // Library page
   els.libraryCategoryInput = document.getElementById("libraryCategoryInput");
@@ -594,6 +654,7 @@ function renderHabitTable(perHabit, dailyTotals) {
           await window.api.habits.toggleCheck(h.id, dateStrFor(d));
           await loadHabits();
           renderAll();
+          refreshAchievements();
         });
         td.appendChild(btn);
         tr.appendChild(td);
@@ -665,6 +726,7 @@ function renderHabitTable(perHabit, dailyTotals) {
     await window.api.habits.add("", daysInMonth());
     await loadHabits();
     renderAll();
+    refreshAchievements();
   });
   addTd.appendChild(addBtn);
   els.tableFootRow.appendChild(addTd);
@@ -909,6 +971,7 @@ function buildDlItem(dl) {
     await loadDeadlines();
     renderDeadlinesPage();
     renderAll();
+    refreshAchievements();
   });
   li.appendChild(check);
 
@@ -1121,6 +1184,7 @@ function renderProjects() {
           await window.api.milestones.updateStatus(m.id, nextStatus(m.status));
           await loadProjects();
           renderProjects();
+          refreshAchievements();
         });
         li.appendChild(statusBtn);
 
@@ -1195,6 +1259,7 @@ async function pomodoroPhaseComplete() {
     state.pomodoro.focusCount += 1;
     await loadPomodoroToday();
     renderPomodoroToday();
+    refreshAchievements();
     window.api.notify.show("Focus session complete — Project Titan", "Nice work. Time for a break.");
     state.pomodoro.phase = state.pomodoro.focusCount % 4 === 0 ? "long_break" : "short_break";
   } else {
@@ -1439,6 +1504,7 @@ async function createNewNote() {
   renderNotesList();
   selectNote(id);
   els.noteTitleInput.focus();
+  refreshAchievements();
 }
 
 function scheduleNoteAutosave() {
@@ -1637,6 +1703,290 @@ function renderLaps() {
   });
 }
 
+// ================= Goals & Achievements page =================
+
+function setGaTab(tab) {
+  state.gaTab = tab;
+  els.goalsTabBtn.classList.toggle("active", tab === "goals");
+  els.achievementsTabBtn.classList.toggle("active", tab === "achievements");
+  els.goalsPanel.classList.toggle("hidden", tab !== "goals");
+  els.achievementsPanel.classList.toggle("hidden", tab !== "achievements");
+  if (tab === "achievements") renderAchievementsGrid();
+}
+
+// ---- Goals ----
+
+async function loadGoals() {
+  state.goals = await window.api.goals.list();
+}
+
+function goalFormatDue(dueDate) {
+  if (!dueDate) return "";
+  const days = Math.round((new Date(dueDate + "T00:00:00") - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  if (days < 0) return `Overdue by ${Math.abs(days)}d`;
+  if (days === 0) return "Due today";
+  return `Due in ${days}d`;
+}
+
+function renderGoalsList() {
+  if (!els.goalsList) return;
+  els.goalsList.innerHTML = "";
+
+  if (state.goals.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "goals-empty";
+    empty.textContent = "No goals yet — set one above to start tracking your progress.";
+    els.goalsList.appendChild(empty);
+    return;
+  }
+
+  state.goals.forEach((goal) => {
+    els.goalsList.appendChild(buildGoalItem(goal));
+  });
+}
+
+function buildGoalItem(goal) {
+  const isDone = goal.current >= goal.target;
+  const pct = Math.min(100, Math.round((goal.current / goal.target) * 100));
+
+  const item = document.createElement("div");
+  item.className = `goal-item${isDone ? " goal-done" : ""}`;
+
+  // Checkbox — only meaningful for simple (target === 1) goals; for numeric goals it
+  // just jumps straight to target / back to 0.
+  const check = document.createElement("button");
+  check.className = `goal-check${isDone ? " checked" : ""}`;
+  check.title = isDone ? "Mark as not done" : "Mark as done";
+  check.textContent = isDone ? "✓" : "";
+  check.addEventListener("click", async () => {
+    await window.api.goals.updateProgress(goal.id, isDone ? 0 : goal.target);
+    await loadGoals();
+    renderGoalsList();
+    refreshAchievements();
+  });
+  item.appendChild(check);
+
+  const body = document.createElement("div");
+  body.className = "goal-body";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "goal-title-row";
+  const title = document.createElement("span");
+  title.className = "goal-title";
+  title.textContent = goal.title;
+  titleRow.appendChild(title);
+  if (goal.due_date) {
+    const due = document.createElement("span");
+    due.className = "goal-due";
+    due.textContent = goalFormatDue(goal.due_date);
+    titleRow.appendChild(due);
+  }
+  body.appendChild(titleRow);
+
+  if (goal.target > 1) {
+    const progressRow = document.createElement("div");
+    progressRow.className = "goal-progress-row";
+
+    const track = document.createElement("div");
+    track.className = "goal-progress-track";
+    const fill = document.createElement("div");
+    fill.className = "goal-progress-fill";
+    fill.style.width = `${pct}%`;
+    track.appendChild(fill);
+    progressRow.appendChild(track);
+
+    const label = document.createElement("span");
+    label.className = "goal-progress-label";
+    label.textContent = `${goal.current}/${goal.target}${goal.unit ? " " + goal.unit : ""}`;
+    progressRow.appendChild(label);
+
+    body.appendChild(progressRow);
+  }
+
+  item.appendChild(body);
+
+  if (goal.target > 1) {
+    const stepper = document.createElement("div");
+    stepper.className = "goal-stepper";
+
+    const minusBtn = document.createElement("button");
+    minusBtn.textContent = "−";
+    minusBtn.addEventListener("click", async () => {
+      await window.api.goals.updateProgress(goal.id, goal.current - 1);
+      await loadGoals();
+      renderGoalsList();
+      refreshAchievements();
+    });
+    stepper.appendChild(minusBtn);
+
+    const plusBtn = document.createElement("button");
+    plusBtn.textContent = "+";
+    plusBtn.addEventListener("click", async () => {
+      await window.api.goals.updateProgress(goal.id, goal.current + 1);
+      await loadGoals();
+      renderGoalsList();
+      refreshAchievements();
+    });
+    stepper.appendChild(plusBtn);
+
+    item.appendChild(stepper);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "goal-actions";
+
+  const editBtn = document.createElement("button");
+  editBtn.textContent = "✏";
+  editBtn.title = "Edit";
+  editBtn.addEventListener("click", () => goalStartEdit(goal));
+  actions.appendChild(editBtn);
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "goal-del-btn";
+  delBtn.textContent = "✕";
+  delBtn.title = "Delete";
+  delBtn.addEventListener("click", async () => {
+    if (!confirm(`Delete goal "${goal.title}"?`)) return;
+    await window.api.goals.remove(goal.id);
+    if (state.goalEditingId === goal.id) goalCancelEdit();
+    await loadGoals();
+    renderGoalsList();
+  });
+  actions.appendChild(delBtn);
+
+  item.appendChild(actions);
+  return item;
+}
+
+function goalStartEdit(goal) {
+  state.goalEditingId = goal.id;
+  els.goalTitleInput.value = goal.title;
+  els.goalTargetInput.value = goal.target;
+  els.goalUnitInput.value = goal.unit || "";
+  els.goalDueDateInput.value = goal.due_date || "";
+  els.goalFormTitle.textContent = "Edit goal";
+  els.goalSaveBtn.textContent = "Save changes";
+  els.goalCancelEditBtn.classList.remove("hidden");
+  els.goalTitleInput.focus();
+}
+
+function goalCancelEdit() {
+  state.goalEditingId = null;
+  els.goalTitleInput.value = "";
+  els.goalTargetInput.value = "1";
+  els.goalUnitInput.value = "";
+  els.goalDueDateInput.value = "";
+  els.goalFormTitle.textContent = "New goal";
+  els.goalSaveBtn.textContent = "+ Add goal";
+  els.goalCancelEditBtn.classList.add("hidden");
+}
+
+// ---- Achievements ----
+
+async function loadAchievementData() {
+  state.achievementStats = await window.api.achievements.getStats();
+  const unlockedRows = await window.api.achievements.listUnlocked();
+  state.unlockedAchievementIds = unlockedRows.map((r) => r.achievement_id);
+}
+
+// Re-checks live stats against the achievement catalog and auto-unlocks any newly
+// earned badges. Call this after any action that could move the underlying numbers
+// (habit checks, milestone/deadline completion, pomodoro sessions, notes, library items).
+async function refreshAchievements() {
+  await loadAchievementData();
+
+  const newlyUnlocked = [];
+  for (const def of ACHIEVEMENT_DEFS) {
+    if (state.unlockedAchievementIds.includes(def.id)) continue;
+    const value = state.achievementStats[def.statKey] || 0;
+    if (value >= def.threshold) {
+      await window.api.achievements.unlock(def.id);
+      state.unlockedAchievementIds.push(def.id);
+      newlyUnlocked.push(def);
+    }
+  }
+
+  if (newlyUnlocked.length === 1) {
+    showToast(`🏆 Achievement unlocked: ${newlyUnlocked[0].title}`);
+  } else if (newlyUnlocked.length > 1) {
+    showToast(`🏆 ${newlyUnlocked.length} achievements unlocked!`);
+  }
+
+  if (state.page === "goals" && state.gaTab === "achievements") {
+    renderAchievementsGrid();
+  }
+}
+
+function renderAchievementsGrid() {
+  if (!els.achievementsGrid || !state.achievementStats) return;
+
+  const unlockedCount = ACHIEVEMENT_DEFS.filter((d) =>
+    state.unlockedAchievementIds.includes(d.id)
+  ).length;
+  els.achievementsSummary.innerHTML = "";
+  const countEl = document.createElement("span");
+  countEl.className = "count";
+  countEl.textContent = `${unlockedCount}/${ACHIEVEMENT_DEFS.length}`;
+  const labelEl = document.createElement("span");
+  labelEl.className = "label";
+  labelEl.textContent = "achievements unlocked";
+  els.achievementsSummary.appendChild(countEl);
+  els.achievementsSummary.appendChild(labelEl);
+
+  els.achievementsGrid.innerHTML = "";
+  ACHIEVEMENT_DEFS.forEach((def) => {
+    const unlocked = state.unlockedAchievementIds.includes(def.id);
+    const value = state.achievementStats[def.statKey] || 0;
+    const pct = Math.min(100, Math.round((value / def.threshold) * 100));
+
+    const card = document.createElement("div");
+    card.className = `achievement-card tier-${def.tier}${unlocked ? " unlocked" : " locked"}`;
+
+    const icon = document.createElement("div");
+    icon.className = "achievement-icon";
+    icon.textContent = unlocked ? def.icon : "🔒";
+    card.appendChild(icon);
+
+    const body = document.createElement("div");
+    body.className = "achievement-body";
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "achievement-title-row";
+    const title = document.createElement("span");
+    title.className = "achievement-title";
+    title.textContent = def.title;
+    titleRow.appendChild(title);
+    const tierBadge = document.createElement("span");
+    tierBadge.className = `achievement-tier-badge ${def.tier}`;
+    tierBadge.textContent = def.tier;
+    titleRow.appendChild(tierBadge);
+    body.appendChild(titleRow);
+
+    const desc = document.createElement("div");
+    desc.className = "achievement-desc";
+    desc.textContent = def.desc;
+    body.appendChild(desc);
+
+    const track = document.createElement("div");
+    track.className = "achievement-progress-track";
+    const fill = document.createElement("div");
+    fill.className = "achievement-progress-fill";
+    fill.style.width = `${pct}%`;
+    track.appendChild(fill);
+    body.appendChild(track);
+
+    const status = document.createElement("div");
+    status.className = `achievement-status${unlocked ? " unlocked-text" : ""}`;
+    status.textContent = unlocked
+      ? "Unlocked"
+      : `${Math.min(value, def.threshold)}/${def.threshold}`;
+    body.appendChild(status);
+
+    card.appendChild(body);
+    els.achievementsGrid.appendChild(card);
+  });
+}
+
 // ---------- events ----------
 function attachEvents() {
   document.querySelectorAll(".nav-btn").forEach((btn) => {
@@ -1777,6 +2127,7 @@ function attachEvents() {
 
     await loadLibraryItems();
     renderLibraryGrid();
+    refreshAchievements();
   });
 
   window.addEventListener("resize", () => {
@@ -1846,6 +2197,40 @@ function attachEvents() {
   els.stopwatchPauseBtn.addEventListener("click", pauseStopwatch);
   els.stopwatchResetBtn.addEventListener("click", resetStopwatch);
   els.stopwatchLapBtn.addEventListener("click", addLap);
+
+  // ===== Goals & Achievements page events =====
+  els.goalsTabBtn.addEventListener("click", () => setGaTab("goals"));
+  els.achievementsTabBtn.addEventListener("click", () => setGaTab("achievements"));
+
+  els.goalSaveBtn.addEventListener("click", async () => {
+    const title = els.goalTitleInput.value.trim();
+    const target = Number(els.goalTargetInput.value) || 1;
+    const unit = els.goalUnitInput.value.trim();
+    const dueDate = els.goalDueDateInput.value;
+    if (!title) {
+      showToast("Please enter a goal title.");
+      return;
+    }
+
+    if (state.goalEditingId !== null) {
+      await window.api.goals.update(state.goalEditingId, title, target, unit, dueDate);
+      goalCancelEdit();
+    } else {
+      await window.api.goals.add(title, target, unit, dueDate);
+      els.goalTitleInput.value = "";
+      els.goalTargetInput.value = "1";
+      els.goalUnitInput.value = "";
+      els.goalDueDateInput.value = "";
+    }
+    await loadGoals();
+    renderGoalsList();
+  });
+
+  els.goalCancelEditBtn.addEventListener("click", () => goalCancelEdit());
+
+  els.goalTitleInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") els.goalSaveBtn.click();
+  });
 }
 
 function setPage(page) {
@@ -1856,6 +2241,10 @@ function setPage(page) {
     btn.classList.toggle("active", btn.dataset.page === page);
   });
   if (page === "habits") renderDynamicsChart(computeStats().monthlyDynamics);
+  if (page === "goals") {
+    renderGoalsList();
+    if (state.gaTab === "achievements") renderAchievementsGrid();
+  }
 }
 
 function setView(view) {

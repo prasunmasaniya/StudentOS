@@ -122,6 +122,8 @@ getting bolted onto the front page.
 Still on the list, in roughly the order it makes sense to tackle:
 
 - Goals & achievements
+- A richer "deadline setter" (course assignments, exams, competitions) — the
+  Habits page already has a lightweight version of this via Calendar View
 - Packaging into a real installer (`.exe`/`.dmg`) via `electron-builder`
 - Mobile app + syncing with this desktop app (will need a small backend/cloud
   database once you get here, since two separate local SQLite files can't sync

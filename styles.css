@@ -849,3 +849,165 @@ tbody tr { border-top: 1px solid var(--border); }
   background: var(--bg);
   font-variant-numeric: tabular-nums;
 }
+
+/* ===== Goals & Achievements page ===== */
+.ga-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+
+/* Goals */
+.goal-form-card { margin-bottom: 16px; }
+.goal-form { display: flex; flex-direction: column; gap: 10px; }
+.goal-form input[type="text"],
+.goal-form input[type="number"],
+.goal-form input[type="date"] {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  font-family: inherit;
+  width: 100%;
+}
+.goal-form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.goal-form-row input { flex: 1; min-width: 110px; width: auto; }
+.goal-form-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.goals-list { display: flex; flex-direction: column; gap: 10px; }
+.goal-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.goal-item.goal-done { border-left: 3px solid var(--green); }
+.goal-check {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  color: transparent;
+  transition: background 0.12s, border-color 0.12s;
+}
+.goal-check:hover { border-color: var(--green); }
+.goal-check.checked { background: var(--green); border-color: var(--green); color: #fff; }
+
+.goal-body { flex: 1; min-width: 0; }
+.goal-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.goal-title { font-size: 14px; font-weight: 600; }
+.goal-item.goal-done .goal-title { text-decoration: line-through; color: var(--text-muted); }
+.goal-due { font-size: 11px; color: var(--text-muted); }
+
+.goal-progress-row { display: flex; align-items: center; gap: 10px; }
+.goal-progress-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--border);
+  overflow: hidden;
+}
+.goal-progress-fill { height: 100%; background: var(--green); transition: width 0.15s; }
+.goal-progress-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; min-width: 70px; text-align: right; }
+
+.goal-stepper { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.goal-stepper button {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  font-family: inherit;
+}
+.goal-stepper button:hover { border-color: var(--blue); color: var(--blue); }
+
+.goal-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.goal-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.goal-actions button:hover { color: var(--text-main); }
+.goal-actions .goal-del-btn:hover { color: var(--red); }
+
+.goals-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 32px 8px; }
+
+/* Achievements */
+.achievements-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.achievements-summary .count { font-size: 22px; font-weight: 700; }
+.achievements-summary .label { font-size: 13px; color: var(--text-muted); }
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.achievement-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  transition: transform 0.1s;
+}
+.achievement-card.locked { opacity: 0.5; }
+.achievement-icon {
+  font-size: 26px;
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.achievement-card.tier-bronze .achievement-icon { background: #fde7d2; }
+.achievement-card.tier-silver .achievement-icon { background: #e5e7eb; }
+.achievement-card.tier-gold .achievement-icon { background: #fef3c7; }
+.shell.dark .achievement-card.tier-bronze .achievement-icon { background: rgba(217,119,6,0.18); }
+.shell.dark .achievement-card.tier-silver .achievement-icon { background: rgba(156,163,175,0.18); }
+.shell.dark .achievement-card.tier-gold .achievement-icon { background: rgba(217,119,6,0.25); }
+
+.achievement-body { flex: 1; min-width: 0; }
+.achievement-title-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.achievement-title { font-size: 13px; font-weight: 700; }
+.achievement-tier-badge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.achievement-tier-badge.bronze { background: #fde7d2; color: #b45309; }
+.achievement-tier-badge.silver { background: #e5e7eb; color: #4b5563; }
+.achievement-tier-badge.gold { background: #fef3c7; color: #92400e; }
+.achievement-desc { font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px; }
+.achievement-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.achievement-progress-fill { height: 100%; background: var(--blue); }
+.achievement-card.unlocked .achievement-progress-fill { background: var(--green); }
+.achievement-status { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.achievement-status.unlocked-text { color: var(--green); font-weight: 600; }

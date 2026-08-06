@@ -16,6 +16,7 @@
       <button class="nav-btn" data-page="deadlines">Deadlines</button>
       <button class="nav-btn" data-page="notes">Notes</button>
       <button class="nav-btn" data-page="timer">Timer</button>
+      <button class="nav-btn" data-page="goals">Goals & Achievements</button>
       <button class="nav-btn" data-page="library">Library</button>
     </nav>
 
@@ -276,6 +277,41 @@
             <button id="stopwatchResetBtn" class="btn">Reset</button>
           </div>
           <ul id="stopwatchLaps" class="lap-list"></ul>
+        </div>
+      </section>
+
+      <!-- ================= GOALS & ACHIEVEMENTS ================= -->
+      <section id="page-goals" class="page hidden">
+        <h1 class="page-title">Goals & Achievements</h1>
+
+        <div class="ga-tabs">
+          <button id="goalsTabBtn" class="tab-btn active">Goals</button>
+          <button id="achievementsTabBtn" class="tab-btn">Achievements</button>
+        </div>
+
+        <div id="goalsPanel">
+          <div class="card goal-form-card">
+            <h2 class="card-label" id="goalFormTitle">New goal</h2>
+            <div class="goal-form">
+              <input id="goalTitleInput" type="text" placeholder="Goal (e.g. Read 12 books this year)" />
+              <div class="goal-form-row">
+                <input id="goalTargetInput" type="number" min="1" value="1" placeholder="Target" />
+                <input id="goalUnitInput" type="text" placeholder="Unit (optional, e.g. books)" />
+                <input id="goalDueDateInput" type="date" />
+              </div>
+              <div class="goal-form-actions">
+                <button id="goalCancelEditBtn" class="btn hidden">Cancel</button>
+                <button id="goalSaveBtn" class="btn btn-primary">+ Add goal</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="goalsList" class="goals-list"></div>
+        </div>
+
+        <div id="achievementsPanel" class="hidden">
+          <div class="achievements-summary" id="achievementsSummary"></div>
+          <div id="achievementsGrid" class="achievements-grid"></div>
         </div>
       </section>
 

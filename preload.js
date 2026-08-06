@@ -54,6 +54,20 @@ contextBridge.exposeInMainWorld("api", {
     update: (id, title, content) => ipcRenderer.invoke("notes:update", id, title, content),
     remove: (id) => ipcRenderer.invoke("notes:remove", id),
   },
+  goals: {
+    list: () => ipcRenderer.invoke("goals:list"),
+    add: (title, target, unit, dueDate) =>
+      ipcRenderer.invoke("goals:add", title, target, unit, dueDate),
+    update: (id, title, target, unit, dueDate) =>
+      ipcRenderer.invoke("goals:update", id, title, target, unit, dueDate),
+    updateProgress: (id, current) => ipcRenderer.invoke("goals:updateProgress", id, current),
+    remove: (id) => ipcRenderer.invoke("goals:remove", id),
+  },
+  achievements: {
+    getStats: () => ipcRenderer.invoke("achievements:getStats"),
+    listUnlocked: () => ipcRenderer.invoke("achievements:listUnlocked"),
+    unlock: (achievementId) => ipcRenderer.invoke("achievements:unlock", achievementId),
+  },
   notify: {
     show: (title, body) => ipcRenderer.invoke("notify:show", title, body),
   },

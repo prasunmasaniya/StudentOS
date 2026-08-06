@@ -108,6 +108,22 @@ ipcMain.handle("notes:add", (_e, title, content) => db.addNote(title, content));
 ipcMain.handle("notes:update", (_e, id, title, content) => db.updateNote(id, title, content));
 ipcMain.handle("notes:remove", (_e, id) => db.removeNote(id));
 
+// ---- IPC: goals ----
+ipcMain.handle("goals:list", () => db.listGoals());
+ipcMain.handle("goals:add", (_e, title, target, unit, dueDate) =>
+  db.addGoal(title, target, unit, dueDate)
+);
+ipcMain.handle("goals:update", (_e, id, title, target, unit, dueDate) =>
+  db.updateGoal(id, title, target, unit, dueDate)
+);
+ipcMain.handle("goals:updateProgress", (_e, id, current) => db.updateGoalProgress(id, current));
+ipcMain.handle("goals:remove", (_e, id) => db.removeGoal(id));
+
+// ---- IPC: achievements ----
+ipcMain.handle("achievements:getStats", () => db.getAchievementStats());
+ipcMain.handle("achievements:listUnlocked", () => db.listUnlockedAchievements());
+ipcMain.handle("achievements:unlock", (_e, achievementId) => db.unlockAchievement(achievementId));
+
 // ---- IPC: settings ----
 ipcMain.handle("settings:get", (_e, key) => db.getSetting(key));
 ipcMain.handle("settings:set", (_e, key, value) => db.setSetting(key, value));
