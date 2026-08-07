@@ -42,6 +42,8 @@ const state = {
   goalEditingId: null,
   achievementStats: null,
   unlockedAchievementIds: [],
+  authMode: null,
+  clockStarted: false,
 };
 
 // Static achievement catalog — 8 categories x 3 tiers, checked against live stats from db.
@@ -86,11 +88,25 @@ document.addEventListener("DOMContentLoaded", init);
 async function init() {
   cacheEls();
   populateMonthSelect();
+  attachEvents();
 
   const savedDark = await window.api.settings.get("darkMode");
   state.darkMode = savedDark === "1";
   applyDarkMode();
 
+  const hasPassword = await window.api.auth.hasPassword();
+  if (hasPassword) {
+    showAuthOverlay("unlock");
+  } else {
+    hideAuthOverlay();
+    await loadAndRenderAppData();
+  }
+}
+
+// Called once after the very first successful unlock, and again after any
+// later lock -> unlock cycle triggered from the Security panel. Safe to
+// re-run: every render* call here just rewrites its container's contents.
+async function loadAndRenderAppData() {
   await Promise.all([
     loadHabits(),
     loadQuotes(),
@@ -105,7 +121,6 @@ async function init() {
     loadAchievementData(),
   ]);
 
-  attachEvents();
   renderAll();
   renderProjects();
   renderPomodoroTimer();
@@ -116,13 +131,42 @@ async function init() {
   renderNotesList();
   renderCountdownDisplay();
   renderStopwatchDisplay();
-  startClock();
+  if (!state.clockStarted) {
+    startClock();
+    state.clockStarted = true;
+  }
   renderGoalsList();
   await refreshAchievements();
 }
 
 function cacheEls() {
   els.shell = document.getElementById("shell");
+
+  // Auth overlay / security
+  els.securityBtn = document.getElementById("securityBtn");
+  els.authOverlay = document.getElementById("authOverlay");
+  els.authUnlockView = document.getElementById("authUnlockView");
+  els.authSetupView = document.getElementById("authSetupView");
+  els.authManageView = document.getElementById("authManageView");
+  els.authUnlockInput = document.getElementById("authUnlockInput");
+  els.authUnlockError = document.getElementById("authUnlockError");
+  els.authUnlockBtn = document.getElementById("authUnlockBtn");
+  els.authSetupInput = document.getElementById("authSetupInput");
+  els.authSetupConfirmInput = document.getElementById("authSetupConfirmInput");
+  els.authSetupError = document.getElementById("authSetupError");
+  els.authSetupBtn = document.getElementById("authSetupBtn");
+  els.authSetupCancelBtn = document.getElementById("authSetupCancelBtn");
+  els.authLockNowBtn = document.getElementById("authLockNowBtn");
+  els.authChangeOldInput = document.getElementById("authChangeOldInput");
+  els.authChangeNewInput = document.getElementById("authChangeNewInput");
+  els.authChangeConfirmInput = document.getElementById("authChangeConfirmInput");
+  els.authChangeError = document.getElementById("authChangeError");
+  els.authChangeBtn = document.getElementById("authChangeBtn");
+  els.authRemoveInput = document.getElementById("authRemoveInput");
+  els.authRemoveError = document.getElementById("authRemoveError");
+  els.authRemoveBtn = document.getElementById("authRemoveBtn");
+  els.authManageCloseBtn = document.getElementById("authManageCloseBtn");
+
   els.quoteBanner = document.getElementById("quoteBanner");
   els.darkToggleBtn = document.getElementById("darkToggleBtn");
   els.quoteToggleBtn = document.getElementById("quoteToggleBtn");
@@ -1255,11 +1299,16 @@ async function pomodoroPhaseComplete() {
 
   if (state.pomodoro.phase === "focus") {
     const minutes = state.pomodoro.durations.focus;
-    await window.api.pomodoro.log(els.pomodoroLabelInput.value.trim(), minutes);
-    state.pomodoro.focusCount += 1;
-    await loadPomodoroToday();
-    renderPomodoroToday();
-    refreshAchievements();
+    try {
+      await window.api.pomodoro.log(els.pomodoroLabelInput.value.trim(), minutes);
+      state.pomodoro.focusCount += 1;
+      await loadPomodoroToday();
+      renderPomodoroToday();
+      refreshAchievements();
+    } catch (err) {
+      // App was locked mid-session — the phase still advances below, we just
+      // can't persist this session until the app is unlocked again.
+    }
     window.api.notify.show("Focus session complete — Project Titan", "Nice work. Time for a break.");
     state.pomodoro.phase = state.pomodoro.focusCount % 4 === 0 ? "long_break" : "short_break";
   } else {
@@ -1987,8 +2036,157 @@ function renderAchievementsGrid() {
   });
 }
 
+// ================= Auth / Security =================
+
+function showAuthOverlay(mode) {
+  state.authMode = mode;
+  els.authOverlay.classList.remove("hidden");
+  els.authUnlockView.classList.toggle("hidden", mode !== "unlock");
+  els.authSetupView.classList.toggle("hidden", mode !== "setup");
+  els.authManageView.classList.toggle("hidden", mode !== "manage");
+
+  if (mode === "unlock") {
+    els.authUnlockInput.value = "";
+    els.authUnlockError.classList.add("hidden");
+    setTimeout(() => els.authUnlockInput.focus(), 50);
+  } else if (mode === "setup") {
+    els.authSetupInput.value = "";
+    els.authSetupConfirmInput.value = "";
+    els.authSetupError.classList.add("hidden");
+    setTimeout(() => els.authSetupInput.focus(), 50);
+  } else if (mode === "manage") {
+    els.authChangeOldInput.value = "";
+    els.authChangeNewInput.value = "";
+    els.authChangeConfirmInput.value = "";
+    els.authChangeError.classList.add("hidden");
+    els.authRemoveInput.value = "";
+    els.authRemoveError.classList.add("hidden");
+  }
+}
+
+function hideAuthOverlay() {
+  state.authMode = null;
+  els.authOverlay.classList.add("hidden");
+}
+
+function showAuthError(el, message) {
+  el.textContent = message;
+  el.classList.remove("hidden");
+}
+
+async function handleSecurityBtnClick() {
+  const hasPassword = await window.api.auth.hasPassword();
+  showAuthOverlay(hasPassword ? "manage" : "setup");
+}
+
+async function handleUnlockSubmit() {
+  const password = els.authUnlockInput.value;
+  if (!password) return;
+  const ok = await window.api.auth.unlock(password);
+  if (!ok) {
+    showAuthError(els.authUnlockError, "Incorrect password. Try again.");
+    els.authUnlockInput.value = "";
+    els.authUnlockInput.focus();
+    return;
+  }
+  hideAuthOverlay();
+  await loadAndRenderAppData();
+}
+
+async function handleSetupSubmit() {
+  const password = els.authSetupInput.value;
+  const confirm = els.authSetupConfirmInput.value;
+  if (password.length < 4) {
+    showAuthError(els.authSetupError, "Use at least 4 characters.");
+    return;
+  }
+  if (password !== confirm) {
+    showAuthError(els.authSetupError, "Passwords don't match.");
+    return;
+  }
+  const ok = await window.api.auth.setup(password);
+  if (!ok) {
+    showAuthError(els.authSetupError, "Couldn't set that password — try again.");
+    return;
+  }
+  hideAuthOverlay();
+  showToast("🔒 Password protection enabled.");
+}
+
+async function handleLockNow() {
+  await window.api.auth.lock();
+  showAuthOverlay("unlock");
+}
+
+async function handleChangePasswordSubmit() {
+  const oldPassword = els.authChangeOldInput.value;
+  const newPassword = els.authChangeNewInput.value;
+  const confirm = els.authChangeConfirmInput.value;
+  if (newPassword.length < 4) {
+    showAuthError(els.authChangeError, "New password needs at least 4 characters.");
+    return;
+  }
+  if (newPassword !== confirm) {
+    showAuthError(els.authChangeError, "New passwords don't match.");
+    return;
+  }
+  const ok = await window.api.auth.changePassword(oldPassword, newPassword);
+  if (!ok) {
+    showAuthError(els.authChangeError, "Current password is incorrect.");
+    return;
+  }
+  els.authChangeOldInput.value = "";
+  els.authChangeNewInput.value = "";
+  els.authChangeConfirmInput.value = "";
+  els.authChangeError.classList.add("hidden");
+  showToast("🔒 Password updated.");
+}
+
+async function handleRemovePasswordSubmit() {
+  const password = els.authRemoveInput.value;
+  if (!password) return;
+  if (!confirm("Remove password protection? Anyone with access to this computer will be able to open the app.")) {
+    return;
+  }
+  const ok = await window.api.auth.removePassword(password);
+  if (!ok) {
+    showAuthError(els.authRemoveError, "Incorrect password.");
+    return;
+  }
+  hideAuthOverlay();
+  showToast("Password protection removed.");
+}
+
 // ---------- events ----------
 function attachEvents() {
+  // ===== Auth / Security events =====
+  els.securityBtn.addEventListener("click", handleSecurityBtnClick);
+
+  els.authUnlockBtn.addEventListener("click", handleUnlockSubmit);
+  els.authUnlockInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleUnlockSubmit();
+  });
+
+  els.authSetupBtn.addEventListener("click", handleSetupSubmit);
+  els.authSetupCancelBtn.addEventListener("click", () => hideAuthOverlay());
+  els.authSetupConfirmInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleSetupSubmit();
+  });
+
+  els.authLockNowBtn.addEventListener("click", handleLockNow);
+
+  els.authChangeBtn.addEventListener("click", handleChangePasswordSubmit);
+  els.authChangeConfirmInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleChangePasswordSubmit();
+  });
+
+  els.authRemoveBtn.addEventListener("click", handleRemovePasswordSubmit);
+  els.authRemoveInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleRemovePasswordSubmit();
+  });
+
+  els.authManageCloseBtn.addEventListener("click", () => hideAuthOverlay());
+
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => setPage(btn.dataset.page));
   });

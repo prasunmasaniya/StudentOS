@@ -79,4 +79,13 @@ contextBridge.exposeInMainWorld("api", {
     get: (key) => ipcRenderer.invoke("settings:get", key),
     set: (key, value) => ipcRenderer.invoke("settings:set", key, value),
   },
+  auth: {
+    hasPassword: () => ipcRenderer.invoke("auth:hasPassword"),
+    setup: (password) => ipcRenderer.invoke("auth:setup", password),
+    unlock: (password) => ipcRenderer.invoke("auth:unlock", password),
+    lock: () => ipcRenderer.invoke("auth:lock"),
+    changePassword: (oldPassword, newPassword) =>
+      ipcRenderer.invoke("auth:changePassword", oldPassword, newPassword),
+    removePassword: (password) => ipcRenderer.invoke("auth:removePassword", password),
+  },
 });

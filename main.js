@@ -1,10 +1,116 @@
 const { app, BrowserWindow, ipcMain, dialog, Notification, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const ExcelJS = require("exceljs");
 const db = require("./db");
 
 let mainWindow;
+
+// ---------------------------------------------------------------------------
+// App lock / password protection
+//
+// isUnlocked lives only in main-process memory (never persisted), so every
+// fresh launch of the app starts locked whenever a password has been set.
+// The actual password is never stored — only a salted scrypt hash of it, in
+// the existing settings table. Every IPC channel except the small exempt
+// list below is gated behind isUnlocked, so a locked renderer can't pull
+// data out of the database even via the devtools console.
+// ---------------------------------------------------------------------------
+let isUnlocked = false;
+
+const AUTH_EXEMPT_CHANNELS = new Set([
+  "auth:hasPassword",
+  "auth:setup",
+  "auth:unlock",
+  "auth:lock",
+  "auth:changePassword",
+  "auth:removePassword",
+  "settings:get",
+  "settings:set",
+  "notify:show",
+]);
+
+function hashPassword(password, existingSaltHex) {
+  const salt = existingSaltHex || crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return { salt, hash };
+}
+
+function verifyPassword(password, saltHex, hashHex) {
+  if (!saltHex || !hashHex) return false;
+  const candidate = crypto.scryptSync(password, saltHex, 64).toString("hex");
+  const a = Buffer.from(candidate, "hex");
+  const b = Buffer.from(hashHex, "hex");
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+// Wrap ipcMain.handle so every future ipcMain.handle(...) call in this file
+// is automatically gated, without having to touch each handler individually.
+const rawHandle = ipcMain.handle.bind(ipcMain);
+ipcMain.handle = (channel, listener) => {
+  if (AUTH_EXEMPT_CHANNELS.has(channel)) {
+    return rawHandle(channel, listener);
+  }
+  return rawHandle(channel, (event, ...args) => {
+    if (!isUnlocked) {
+      throw new Error("locked");
+    }
+    return listener(event, ...args);
+  });
+};
+
+ipcMain.handle("auth:hasPassword", () => !!db.getSetting("authHash"));
+
+ipcMain.handle("auth:setup", (_e, password) => {
+  if (!password || password.length < 4) return false;
+  const { salt, hash } = hashPassword(password);
+  db.setSetting("authSalt", salt);
+  db.setSetting("authHash", hash);
+  isUnlocked = true;
+  return true;
+});
+
+ipcMain.handle("auth:unlock", (_e, password) => {
+  const hash = db.getSetting("authHash");
+  const salt = db.getSetting("authSalt");
+  if (!hash) {
+    // No password configured — nothing to unlock.
+    isUnlocked = true;
+    return true;
+  }
+  if (verifyPassword(password, salt, hash)) {
+    isUnlocked = true;
+    return true;
+  }
+  return false;
+});
+
+ipcMain.handle("auth:lock", () => {
+  isUnlocked = false;
+  return true;
+});
+
+ipcMain.handle("auth:changePassword", (_e, oldPassword, newPassword) => {
+  const hash = db.getSetting("authHash");
+  const salt = db.getSetting("authSalt");
+  if (!verifyPassword(oldPassword, salt, hash)) return false;
+  if (!newPassword || newPassword.length < 4) return false;
+  const next = hashPassword(newPassword);
+  db.setSetting("authSalt", next.salt);
+  db.setSetting("authHash", next.hash);
+  return true;
+});
+
+ipcMain.handle("auth:removePassword", (_e, password) => {
+  const hash = db.getSetting("authHash");
+  const salt = db.getSetting("authSalt");
+  if (!verifyPassword(password, salt, hash)) return false;
+  db.setSetting("authSalt", "");
+  db.setSetting("authHash", "");
+  return true;
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -26,6 +132,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   db.init();
+  isUnlocked = !db.getSetting("authHash");
   createWindow();
 
   checkAllReminders();

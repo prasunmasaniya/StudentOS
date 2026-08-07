@@ -18,6 +18,10 @@
       <button class="nav-btn" data-page="timer">Timer</button>
       <button class="nav-btn" data-page="goals">Goals & Achievements</button>
       <button class="nav-btn" data-page="library">Library</button>
+
+      <div class="sidebar-footer">
+        <button id="securityBtn" class="sidebar-footer-btn" title="Password protection">🔒 Security</button>
+      </div>
     </nav>
 
     <div class="main-content">
@@ -346,6 +350,61 @@
       </section>
 
     </div>
+
+    <div id="authOverlay" class="auth-overlay hidden">
+      <div class="auth-card">
+      <div class="auth-brand">🔒 Project Titan</div>
+
+      <!-- Unlock mode: shown at launch when a password is set -->
+      <div id="authUnlockView" class="auth-view hidden">
+        <h2 class="auth-heading">Enter your password</h2>
+        <p class="muted small">This app's data is password protected.</p>
+        <input id="authUnlockInput" type="password" placeholder="Password" autocomplete="current-password" />
+        <p id="authUnlockError" class="auth-error hidden"></p>
+        <button id="authUnlockBtn" class="btn btn-primary auth-full-btn">Unlock</button>
+      </div>
+
+      <!-- Setup mode: no password configured yet, user opted in via the Security button -->
+      <div id="authSetupView" class="auth-view hidden">
+        <h2 class="auth-heading">Set up a password</h2>
+        <p class="muted small">Protect your habits, notes, deadlines, and goals with a password.</p>
+        <input id="authSetupInput" type="password" placeholder="New password" autocomplete="new-password" />
+        <input id="authSetupConfirmInput" type="password" placeholder="Confirm password" autocomplete="new-password" />
+        <p id="authSetupError" class="auth-error hidden"></p>
+        <div class="auth-btn-row">
+          <button id="authSetupCancelBtn" class="btn">Cancel</button>
+          <button id="authSetupBtn" class="btn btn-primary">Set password</button>
+        </div>
+      </div>
+
+      <!-- Manage mode: already unlocked, password exists — lock / change / remove -->
+      <div id="authManageView" class="auth-view hidden">
+        <h2 class="auth-heading">Security</h2>
+        <button id="authLockNowBtn" class="btn auth-full-btn">🔒 Lock now</button>
+
+        <div class="auth-divider"></div>
+
+        <h3 class="auth-subheading">Change password</h3>
+        <input id="authChangeOldInput" type="password" placeholder="Current password" autocomplete="current-password" />
+        <input id="authChangeNewInput" type="password" placeholder="New password" autocomplete="new-password" />
+        <input id="authChangeConfirmInput" type="password" placeholder="Confirm new password" autocomplete="new-password" />
+        <p id="authChangeError" class="auth-error hidden"></p>
+        <button id="authChangeBtn" class="btn auth-full-btn">Update password</button>
+
+        <div class="auth-divider"></div>
+
+        <h3 class="auth-subheading">Remove protection</h3>
+        <input id="authRemoveInput" type="password" placeholder="Current password" autocomplete="current-password" />
+        <p id="authRemoveError" class="auth-error hidden"></p>
+        <button id="authRemoveBtn" class="btn auth-full-btn btn-danger">Remove password protection</button>
+
+        <div class="auth-divider"></div>
+        <button id="authManageCloseBtn" class="btn auth-full-btn">Close</button>
+      </div>
+    </div>
+
+  </div>
+
   </div>
 
   <script src="renderer.js"></script>
